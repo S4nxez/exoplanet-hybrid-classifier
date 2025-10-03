@@ -12,17 +12,21 @@ import tensorflow as tf
 from tensorflow import keras
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
+from scipy.stats import entropy
 import joblib
 import os
 
 class TensorFlowHybridModel:
-    """Modelo híbrido que usa TensorFlow para combinar predicciones de modelos de scikit-learn"""
+    """Modelo híbrido jerárquico + stacking con TensorFlow"""
 
-    def __init__(self, partial_model=None, total_model=None, data_processor=None):
+    def __init__(self, partial_model=None, total_model=None, data_processor=None, 
+                 partial_threshold=0.9, enable_cascade=True):
         self.partial_model = partial_model
         self.total_model = total_model
         self.data_processor = data_processor
+        self.partial_threshold = partial_threshold
+        self.enable_cascade = enable_cascade
         self.tf_model = None
         self.scaler = StandardScaler()
         self.is_trained = False
@@ -31,20 +35,22 @@ class TensorFlowHybridModel:
         tf.config.experimental.set_memory_growth = True
 
     def _extract_features(self, X):
-        """Extraer características combinadas de ambos modelos"""
+        """Extraer características optimizadas y focalizadas"""
         features = []
 
-        # 1. Características originales
+        # 1. Características originales (las más importantes)
         features.append(X)
 
-        # 2. Probabilidades del modelo total
+        # 2. Probabilidades del modelo total (información valiosa)
+        total_probs = None
         if self.total_model:
             total_probs = self.total_model.predict_proba(X)
             features.append(total_probs)
 
-        # 3. Probabilidades del modelo parcial para casos extremos
+        # 3. Probabilidades del modelo parcial (solo para casos extremos)
+        partial_probs = None
         if self.partial_model and self.data_processor:
-            partial_probs = np.zeros((len(X), 2))  # 2 clases
+            partial_probs = np.zeros((len(X), 2))
             extreme_mask = np.array([self.data_processor.is_extreme_case(x) for x in X])
 
             if np.any(extreme_mask):
@@ -54,10 +60,36 @@ class TensorFlowHybridModel:
 
             features.append(partial_probs)
 
-        # 4. Características de confianza
-        if self.total_model:
-            total_conf = np.max(self.total_model.predict_proba(X), axis=1).reshape(-1, 1)
+        # 4. Características de confianza (valores clave para decisión)
+        if total_probs is not None:
+            total_conf = np.max(total_probs, axis=1).reshape(-1, 1)
             features.append(total_conf)
+
+        if partial_probs is not None:
+            partial_conf = np.max(partial_probs, axis=1).reshape(-1, 1)
+            features.append(partial_conf)
+
+        # 5. Diferencia de confianza (información discriminativa)
+        if total_probs is not None and partial_probs is not None:
+            total_max_conf = np.max(total_probs, axis=1)
+            partial_max_conf = np.max(partial_probs, axis=1)
+            conf_diff = np.abs(total_max_conf - partial_max_conf).reshape(-1, 1)
+            features.append(conf_diff)
+
+        # 6. Indicador de casos extremos (información estructural importante)
+        if self.data_processor:
+            extreme_indicators = np.array([
+                [1.0 if self.data_processor.is_extreme_case(x) else 0.0] 
+                for x in X
+            ])
+            features.append(extreme_indicators)
+
+        # ELIMINAMOS características que pueden introducir ruido:
+        # - Entropía de probabilidades
+        # - Feature importance weights (pueden causar mismatch)
+        
+        # Concatenar todas las características
+        return np.concatenate(features, axis=1)
 
         # 5. Indicador de caso extremo
         if self.data_processor:
@@ -69,28 +101,56 @@ class TensorFlowHybridModel:
         return combined_features
 
     def _build_model(self, input_dim):
-        """Construir el modelo de red neuronal con TensorFlow"""
+        """Construir modelo de red neuronal optimizado para superar al baseline"""
         model = keras.Sequential([
-            # Capa de entrada
-            keras.layers.Dense(64, activation='relu', input_shape=(input_dim,)),
+            # Capa de entrada más robusta
+            keras.layers.Dense(512, 
+                             activation='relu', 
+                             input_shape=(input_dim,),
+                             kernel_regularizer=tf.keras.regularizers.l2(0.0005),
+                             kernel_initializer='he_normal'),
             keras.layers.BatchNormalization(),
             keras.layers.Dropout(0.3),
-
-            # Capas ocultas
-            keras.layers.Dense(32, activation='relu'),
+            
+            # Capas profundas para mejor representación
+            keras.layers.Dense(256, 
+                             activation='relu',
+                             kernel_regularizer=tf.keras.regularizers.l2(0.0005),
+                             kernel_initializer='he_normal'),
+            keras.layers.BatchNormalization(),
+            keras.layers.Dropout(0.25),
+            
+            keras.layers.Dense(128, 
+                             activation='relu',
+                             kernel_regularizer=tf.keras.regularizers.l2(0.0005),
+                             kernel_initializer='he_normal'),
             keras.layers.BatchNormalization(),
             keras.layers.Dropout(0.2),
-
-            keras.layers.Dense(16, activation='relu'),
+            
+            # Capas de refinamiento
+            keras.layers.Dense(64, 
+                             activation='relu',
+                             kernel_regularizer=tf.keras.regularizers.l2(0.0005),
+                             kernel_initializer='he_normal'),
+            keras.layers.Dropout(0.15),
+            
+            keras.layers.Dense(32,
+                             activation='relu',
+                             kernel_initializer='he_normal'),
             keras.layers.Dropout(0.1),
 
-            # Capa de salida
-            keras.layers.Dense(2, activation='softmax')  # 2 clases: Exoplaneta, No exoplaneta
+            # Capa de salida con softmax calibrado
+            keras.layers.Dense(2, activation='softmax')
         ])
 
-        # Compilar modelo
+        # Compilar con optimizador más sofisticado
         model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=0.001),
+            optimizer=keras.optimizers.Adam(
+                learning_rate=0.001,
+                beta_1=0.9,
+                beta_2=0.999,
+                epsilon=1e-7
+            ),
             loss='sparse_categorical_crossentropy',
             metrics=['accuracy']
         )
@@ -117,18 +177,28 @@ class TensorFlowHybridModel:
         # Construir modelo
         self.tf_model = self._build_model(combined_features_scaled.shape[1])
 
-        # Callbacks para mejorar entrenamiento
+        # Callbacks mejorados para entrenamiento robusto
         callbacks = [
             keras.callbacks.EarlyStopping(
                 monitor='val_accuracy',
-                patience=15,
-                restore_best_weights=True
+                patience=20,  # Más paciencia para encontrar mejor solución
+                restore_best_weights=True,
+                min_delta=0.001  # Mínima mejora requerida
             ),
             keras.callbacks.ReduceLROnPlateau(
                 monitor='val_loss',
-                factor=0.5,
-                patience=8,
-                min_lr=1e-6
+                factor=0.7,  # Reducción más gradual
+                patience=10,
+                min_lr=1e-7,
+                verbose=1
+            ),
+            # Callback personalizado para monitorear progreso
+            keras.callbacks.ModelCheckpoint(
+                'temp_best_hybrid_model.keras',
+                monitor='val_accuracy',
+                save_best_only=True,
+                mode='max',
+                verbose=0
             )
         ]
 
@@ -155,25 +225,69 @@ class TensorFlowHybridModel:
         return train_accuracy, history
 
     def predict(self, X):
-        """Predecir usando el modelo híbrido"""
+        """Predicción híbrida optimizada: Cascada + Total Model como backbone fuerte"""
         if not self.is_trained:
             raise ValueError("El modelo no ha sido entrenado")
 
-        # Extraer características combinadas
-        combined_features = self._extract_features(X)
-        combined_features_scaled = self.scaler.transform(combined_features)
+        predictions = []
+        cascade_used = []
+        
+        for i, x in enumerate(X):
+            x_single = x.reshape(1, -1)
+            
+            # 🔹 NIVEL 1: CASCADA - Modelo parcial para casos extremos de alta confianza
+            if (self.enable_cascade and 
+                self.partial_model and 
+                hasattr(self.partial_model, 'predict_with_confidence') and
+                self.data_processor and 
+                self.data_processor.is_extreme_case(x)):
+                
+                confident_pred = self.partial_model.predict_with_confidence(x_single)
+                
+                if confident_pred[0] != 'uncertain':
+                    # Cascada: usar modelo parcial de alta confianza
+                    predictions.append(confident_pred[0])
+                    cascade_used.append(True)
+                    continue
+            
+            # 🔹 NIVEL 2: BACKBONE INTELIGENTE
+            # Para todos los demás casos, usar el modelo total como base sólida
+            # Solo aplicar híbrido TensorFlow cuando pueda aportar valor real
+            
+            total_probs = self.total_model.predict_proba(x_single)
+            total_pred = self.total_model.predict(x_single)[0]
+            total_confidence = np.max(total_probs)
+            
+            # Si el modelo total está muy seguro (>85%), confiar en él directamente
+            if total_confidence > 0.85:
+                predictions.append(total_pred)
+                cascade_used.append(False)
+                continue
+            
+            # Solo para casos de baja confianza del total, consultar híbrido
+            combined_features = self._extract_features(x_single)
+            combined_features_scaled = self.scaler.transform(combined_features)
+            
+            hybrid_probs = self.tf_model.predict(combined_features_scaled, verbose=0)
+            hybrid_confidence = np.max(hybrid_probs)
+            
+            # Solo usar híbrido si está significativamente más seguro
+            if hybrid_confidence > total_confidence + 0.15:  # Margen alto
+                hybrid_pred_idx = np.argmax(hybrid_probs, axis=1)[0]
+                label_map = {0: 'No exoplaneta', 1: 'Exoplaneta'}
+                predictions.append(label_map[hybrid_pred_idx])
+            else:
+                # Default: usar modelo total (más confiable)
+                predictions.append(total_pred)
+            
+            cascade_used.append(False)
 
-        # Predecir probabilidades
-        probs = self.tf_model.predict(combined_features_scaled, verbose=0)
-
-        # Convertir a clases
-        predictions = np.argmax(probs, axis=1)
-
-        # Convertir a etiquetas string
-        label_map = {0: 'No exoplaneta', 1: 'Exoplaneta'}
-        predictions_labels = [label_map[pred] for pred in predictions]
-
-        return np.array(predictions_labels)
+        return np.array(predictions), np.array(cascade_used)
+    
+    def predict_simple(self, X):
+        """Predecir sin información de cascada (para compatibilidad)"""
+        predictions, _ = self.predict(X)
+        return predictions
 
     def predict_proba(self, X):
         """Predecir probabilidades"""
@@ -190,9 +304,15 @@ class TensorFlowHybridModel:
         if not self.is_trained:
             raise ValueError("El modelo no ha sido entrenado")
 
-        # Predicciones del modelo híbrido
-        hybrid_preds = self.predict(X_test)
+    def evaluate(self, X_test, y_test):
+        """Evaluar el modelo híbrido jerárquico"""
+        if not self.is_trained:
+            raise ValueError("El modelo no ha sido entrenado")
+
+        # Predicciones del modelo híbrido con información de cascada
+        hybrid_preds, cascade_used = self.predict(X_test)
         hybrid_accuracy = accuracy_score(y_test, hybrid_preds)
+        hybrid_f1 = f1_score(y_test, hybrid_preds, average='weighted', zero_division=0)
 
         # Comparar con modelos individuales
         total_preds = self.total_model.predict(X_test)
@@ -210,15 +330,35 @@ class TensorFlowHybridModel:
             partial_accuracy = 0
             partial_coverage = 0
 
+        # Métricas de cascada
+        cascade_usage = np.mean(cascade_used) * 100  # Porcentaje de casos que usaron cascada
+        cascade_indices = np.where(cascade_used)[0]
+        stacking_indices = np.where(~cascade_used)[0]
+        
+        cascade_accuracy = 0
+        stacking_accuracy = 0
+        
+        if len(cascade_indices) > 0:
+            cascade_accuracy = accuracy_score(y_test[cascade_indices], hybrid_preds[cascade_indices])
+        
+        if len(stacking_indices) > 0:
+            stacking_accuracy = accuracy_score(y_test[stacking_indices], hybrid_preds[stacking_indices])
+
         results = {
             'hybrid_accuracy': hybrid_accuracy,
+            'hybrid_f1_score': hybrid_f1,
             'total_accuracy': total_accuracy,
             'partial_accuracy': partial_accuracy,
             'partial_coverage': partial_coverage,
+            'cascade_usage': cascade_usage,
+            'cascade_accuracy': cascade_accuracy,
+            'stacking_accuracy': stacking_accuracy,
             'improvement_over_total': hybrid_accuracy - total_accuracy,
             'improvement_over_partial': hybrid_accuracy - partial_accuracy if partial_accuracy > 0 else 0,
             'test_samples': len(y_test),
             'extreme_cases': len(extreme_indices),
+            'cascade_cases': len(cascade_indices),
+            'stacking_cases': len(stacking_indices),
             'confusion_matrix': confusion_matrix(y_test, hybrid_preds),
             'classification_report': classification_report(y_test, hybrid_preds)
         }
@@ -240,6 +380,68 @@ class TensorFlowHybridModel:
         joblib.dump(self.scaler, scaler_path)
 
         print(f"✅ Modelo híbrido guardado en {model_path}")
+    
+    def explain_prediction(self, X_sample, method='feature_importance'):
+        """Explicar predicción individual"""
+        if not self.is_trained:
+            raise ValueError("El modelo no ha sido entrenado")
+        
+        if method == 'feature_importance':
+            # Usar gradientes para explicar importancia de características
+            X_sample_reshaped = X_sample.reshape(1, -1)
+            combined_features = self._extract_features(X_sample_reshaped)
+            combined_features_scaled = self.scaler.transform(combined_features)
+            
+            # Convertir a tensor
+            x_tensor = tf.Variable(combined_features_scaled, dtype=tf.float32)
+            
+            with tf.GradientTape() as tape:
+                predictions = self.tf_model(x_tensor)
+                predicted_class = tf.argmax(predictions, axis=1)
+                prediction_score = tf.reduce_max(predictions)
+            
+            # Calcular gradientes
+            gradients = tape.gradient(prediction_score, x_tensor)
+            feature_importance = tf.abs(gradients).numpy().flatten()
+            
+            return {
+                'prediction': predicted_class.numpy()[0],
+                'confidence': prediction_score.numpy(),
+                'feature_importance': feature_importance,
+                'features_used': combined_features.flatten()
+            }
+        
+        else:
+            return {'error': f'Método {method} no implementado'}
+    
+    def get_cascade_statistics(self, X_test, y_test):
+        """Obtener estadísticas detalladas del sistema de cascada"""
+        if not self.is_trained:
+            raise ValueError("El modelo no ha sido entrenado")
+        
+        predictions, cascade_used = self.predict(X_test)
+        
+        # Casos que usaron cascada (modelo parcial)
+        cascade_indices = np.where(cascade_used)[0]
+        stacking_indices = np.where(~cascade_used)[0]
+        
+        stats = {
+            'total_samples': len(X_test),
+            'cascade_count': len(cascade_indices),
+            'stacking_count': len(stacking_indices),
+            'cascade_percentage': len(cascade_indices) / len(X_test) * 100,
+            'stacking_percentage': len(stacking_indices) / len(X_test) * 100
+        }
+        
+        if len(cascade_indices) > 0:
+            cascade_accuracy = accuracy_score(y_test[cascade_indices], predictions[cascade_indices])
+            stats['cascade_accuracy'] = cascade_accuracy
+        
+        if len(stacking_indices) > 0:
+            stacking_accuracy = accuracy_score(y_test[stacking_indices], predictions[stacking_indices])
+            stats['stacking_accuracy'] = stacking_accuracy
+        
+        return stats
 
     def load(self, model_path='saved_models/hybrid_tf_model.keras', scaler_path='saved_models/hybrid_tf_scaler.pkl'):
         """Cargar el modelo híbrido"""

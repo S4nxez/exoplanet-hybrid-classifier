@@ -40,7 +40,7 @@ class DataProcessor:
         for col in available_features:
             if clean_data[col].dtype in ['float64', 'int64']:
                 median_val = clean_data[col].median()
-                clean_data[col].fillna(median_val, inplace=True)
+                clean_data.loc[:, col] = clean_data[col].fillna(median_val)
 
         clean_data = clean_data.dropna()
         clean_data['binary_class'] = clean_data['koi_disposition'].map(self.binary_mapping)
