@@ -10,6 +10,6 @@ from .model_evaluators import TotalModelEvaluator, PartialModelEvaluator, Hybrid
 __all__ = [
     'BaseEvaluator',
     'TotalModelEvaluator',
-    'PartialModelEvaluator', 
+    'PartialModelEvaluator',
     'HybridModelEvaluator'
 ]

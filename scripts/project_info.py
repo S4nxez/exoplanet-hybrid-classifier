@@ -6,7 +6,7 @@ Muestra información sobre el sistema Orkhestra y la estructura del proyecto.
 
 Orkhestra es un sistema de fusión inteligente que combina:
 - Modelo Parcial (Scikit-learn RandomForest) para casos extremos/seguros
-- Modelo Total (TensorFlow) para cobertura completa  
+- Modelo Total (TensorFlow) para cobertura completa
 - Sistema de Fusión inteligente basado en confianza
 """
 
@@ -22,7 +22,7 @@ def show_orkhestra_architecture():
     """Muestra la arquitectura del sistema Orkhestra"""
     print("🎼 ARQUITECTURA DEL SISTEMA ORKHESTRA")
     print("=" * 50)
-    
+
     architecture = {
         "🎯 Modelo Parcial (Scikit-learn)": [
             "RandomForestClassifier especializado",
@@ -31,7 +31,7 @@ def show_orkhestra_architecture():
             "Manejo de casos 'Unknown' para baja confianza"
         ],
         "🤖 Modelo Total (TensorFlow)": [
-            "Red neuronal para cobertura completa", 
+            "Red neuronal para cobertura completa",
             "Procesa todos los casos sin excepción",
             "Arquitectura robusta y generalizable",
             "Backbone para decisiones complejas"
@@ -43,12 +43,12 @@ def show_orkhestra_architecture():
             "Métricas de análisis de fusión detalladas"
         ]
     }
-    
+
     for component, features in architecture.items():
         print(f"\n{component}")
         for feature in features:
             print(f"   ✨ {feature}")
-    
+
     print(f"\n🔄 FLUJO DE DECISIÓN ORKHESTRA:")
     print("   1. Modelo Parcial evalúa confianza")
     print("   2. Si confianza >= umbral → Usa predicción Parcial")
@@ -60,7 +60,7 @@ def show_project_structure():
     """Muestra la estructura organizada del proyecto"""
     print("\n📁 ESTRUCTURA DEL PROYECTO ORKHESTRA")
     print("=" * 50)
-    
+
     structure = {
         "📦 Raíz del proyecto": [
             "train_*.py (wrappers de compatibilidad)",
@@ -86,7 +86,7 @@ def show_project_structure():
             "legacy/ - Archivos de versiones anteriores"
         ]
     }
-    
+
     for category, items in structure.items():
         print(f"\n{category}")
         for item in items:
@@ -97,7 +97,7 @@ def show_available_models():
     """Muestra información sobre los modelos disponibles"""
     print("\n🤖 MODELOS DISPONIBLES EN ORKHESTRA")
     print("=" * 50)
-    
+
     models_info = {
         "🎼 Sistema Orkhestra (RECOMENDADO)": {
             "descripción": "Sistema de fusión inteligente con confianza adaptativa",
@@ -116,7 +116,7 @@ def show_available_models():
         "🤖 Modelo Total (Componente Orkhestra)": {
             "descripción": "TensorFlow para cobertura completa de todos los casos",
             "trainer": "src/trainers/total_trainer.py",
-            "model": "src/models/total_coverage.py", 
+            "model": "src/models/total_coverage.py",
             "script": "scripts/training/train_total.py",
             "comando": "python scripts/main_training.py --model total"
         },
@@ -128,7 +128,7 @@ def show_available_models():
             "comando": "python scripts/main_training.py --model hybrid"
         }
     }
-    
+
     for model_name, info in models_info.items():
         print(f"\n{model_name}")
         print(f"   📄 {info['descripción']}")
@@ -142,12 +142,12 @@ def check_saved_models():
     """Verifica qué modelos están guardados"""
     print("\n💾 MODELOS ORKHESTRA GUARDADOS")
     print("=" * 50)
-    
+
     saved_models_dir = "saved_models"
     if not os.path.exists(saved_models_dir):
         print("❌ Directorio saved_models/ no encontrado")
         return
-    
+
     model_files = {
         "🎼 Sistema Orkhestra": [
             "hybrid_tf_enhanced_model.keras",
@@ -161,7 +161,7 @@ def check_saved_models():
         ],
         "🤖 Modelo Total": [
             "total_model.pkl",
-            "total_scaler.pkl", 
+            "total_scaler.pkl",
             "total_encoder.pkl",
             "total_feature_importance.pkl",
             "total_feature_names.pkl"
@@ -170,7 +170,7 @@ def check_saved_models():
             "temp_best_hybrid_model.keras"
         ]
     }
-    
+
     for model_name, files in model_files.items():
         print(f"\n{model_name}")
         for file in files:
@@ -188,7 +188,7 @@ def show_usage_examples():
     """Muestra ejemplos de uso de Orkhestra"""
     print("\n🚀 EJEMPLOS DE USO - SISTEMA ORKHESTRA")
     print("=" * 50)
-    
+
     examples = [
         ("🎼 Entrenar Sistema Orkhestra (RECOMENDADO):", "python scripts/main_training.py --model orkhestra"),
         ("🎼 Evaluar Sistema Orkhestra:", "python scripts/main_prediction.py --model orkhestra"),
@@ -199,11 +199,11 @@ def show_usage_examples():
         ("🧹 Limpiar archivos temporales:", "python scripts/utils/clean_project.py"),
         ("ℹ️ Ver información del proyecto:", "python scripts/project_info.py")
     ]
-    
+
     for description, command in examples:
         print(f"\n📌 {description}")
         print(f"   {command}")
-    
+
     print(f"\n💡 FLUJO DE TRABAJO RECOMENDADO:")
     print("   1. python scripts/main_training.py --model orkhestra")
     print("   2. python scripts/main_prediction.py --model orkhestra")
@@ -214,7 +214,7 @@ def show_orkhestra_features():
     """Muestra las características avanzadas de Orkhestra"""
     print("\n✨ CARACTERÍSTICAS AVANZADAS DE ORKHESTRA")
     print("=" * 50)
-    
+
     features = {
         "🧠 Inteligencia de Fusión": [
             "Decisiones basadas en confianza",
@@ -241,7 +241,7 @@ def show_orkhestra_features():
             "Escalabilidad para grandes datasets"
         ]
     }
-    
+
     for category, items in features.items():
         print(f"\n{category}")
         for item in items:
@@ -254,14 +254,14 @@ def main():
     print("=" * 60)
     print("Sistema de Fusión Inteligente para Clasificación de Exoplanetas")
     print("=" * 60)
-    
+
     show_orkhestra_architecture()
     show_project_structure()
     show_available_models()
     check_saved_models()
     show_usage_examples()
     show_orkhestra_features()
-    
+
     print("\n" + "=" * 60)
     print("🎼 ✨ ORKHESTRA - SISTEMA DE FUSIÓN INTELIGENTE ✨")
     print("🎯 Precisión extrema + 🤖 Cobertura completa = 🎼 Rendimiento superior")

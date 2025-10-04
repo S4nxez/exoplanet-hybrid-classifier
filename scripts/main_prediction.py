@@ -6,7 +6,7 @@ Script unificado para realizar predicciones con el sistema Orkhestra y modelos i
 
 Orkhestra utiliza una arquitectura híbrida con:
 - Modelo Parcial (Scikit-learn RandomForest) para casos extremos/seguros
-- Modelo Total (TensorFlow) para cobertura completa  
+- Modelo Total (TensorFlow) para cobertura completa
 - Sistema de Fusión inteligente basado en confianza
 
 Uso:
@@ -46,36 +46,36 @@ def predict_orkhestra() -> Dict[str, Any]:
     print("Orkhestra - Sistema de Fusión Inteligente")
     print("Arquitectura: Partial (ScikitLearn) + Total (TensorFlow) + Fusión")
     print("=" * 50)
-    
+
     results = {}
-    
+
     try:
         print("\n🎼 Evaluando Sistema Orkhestra...")
         print("   → Fusión inteligente basada en confianza")
-        
+
         # Usar el evaluador híbrido que ahora maneja Orkhestra
         orkhestra_evaluator = HybridModelEvaluator()
         orkhestra_evaluator.load_test_data()
-        
+
         # Intentar cargar el modelo Orkhestra
         model_path = 'saved_models/hybrid_tf_enhanced_model.keras'
         if not os.path.exists(model_path):
             model_path = 'saved_models/hybrid_tf_model.keras'
-            
+
         orkhestra_evaluator.load_model(model_path)
         predictions = orkhestra_evaluator.predict()
         accuracy, f1 = orkhestra_evaluator.calculate_metrics(predictions)
-        
+
         results = {
             'accuracy': accuracy,
             'f1_score': f1,
             'model_type': 'orkhestra',
             'predictions': predictions
         }
-        
+
         print(f"   ✅ Accuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
         print(f"   ✅ F1-Score: {f1:.4f}")
-        
+
         # Intentar obtener métricas detalladas si están disponibles
         if hasattr(orkhestra_evaluator.model, 'get_fusion_analysis'):
             try:
@@ -89,14 +89,14 @@ def predict_orkhestra() -> Dict[str, Any]:
                 print(f"   Umbral Confianza:   {fusion_analysis.get('confidence_threshold', 0.9):.3f}")
             except:
                 print("   ℹ️  Métricas de fusión no disponibles en este modelo")
-        
+
     except Exception as e:
         print(f"❌ Error durante la predicción Orkhestra: {e}")
         import traceback
         print("Traceback completo:")
         traceback.print_exc()
         results = {'accuracy': 0.0, 'f1_score': 0.0, 'error': str(e)}
-    
+
     print("\n🎼 SISTEMA ORKHESTRA - Predicción completada")
     return results
 
@@ -105,9 +105,9 @@ def predict_all_models() -> Dict[str, Dict[str, Any]]:
     """Realiza predicciones con todos los modelos y compara resultados"""
     print("🚀 PREDICCIÓN CON TODOS LOS MODELOS")
     print("=" * 50)
-    
+
     results = {}
-    
+
     try:
         # Modelo Total
         print("\n1️⃣ Evaluando Modelo Total (TensorFlow)...")
@@ -118,7 +118,7 @@ def predict_all_models() -> Dict[str, Dict[str, Any]]:
         accuracy, f1 = total_evaluator.calculate_metrics(predictions)
         results['total'] = {'accuracy': accuracy, 'f1_score': f1}
         print(f"   ✅ Accuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
-        
+
         # Modelo Parcial
         print("\n2️⃣ Evaluando Modelo Parcial (Scikit-learn)...")
         partial_evaluator = PartialModelEvaluator()
@@ -131,7 +131,7 @@ def predict_all_models() -> Dict[str, Dict[str, Any]]:
         results['partial'] = {'accuracy': accuracy, 'f1_score': f1, 'coverage': coverage}
         print(f"   ✅ Accuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
         print(f"   🎯 Coverage: {coverage:.4f} ({coverage*100:.2f}%)")
-        
+
         # Modelo Híbrido Clásico
         print("\n3️⃣ Evaluando Modelo Híbrido Clásico...")
         hybrid_evaluator = HybridModelEvaluator()
@@ -141,16 +141,16 @@ def predict_all_models() -> Dict[str, Dict[str, Any]]:
         accuracy, f1 = hybrid_evaluator.calculate_metrics(predictions)
         results['hybrid'] = {'accuracy': accuracy, 'f1_score': f1}
         print(f"   ✅ Accuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
-        
+
         # Sistema Orkhestra
         print("\n4️⃣ Evaluando Sistema Orkhestra...")
         orkhestra_result = predict_orkhestra()
         results['orkhestra'] = orkhestra_result
-        
+
     except Exception as e:
         print(f"❌ Error durante la predicción: {e}")
         return results
-    
+
     return results
 
 
@@ -159,14 +159,14 @@ def compare_models(results: Dict[str, Dict[str, Any]]) -> None:
     print("\n" + "=" * 70)
     print("📊 COMPARACIÓN DETALLADA DE MODELOS")
     print("=" * 70)
-    
+
     print(f"{'Modelo':<15} {'Accuracy':<12} {'F1-Score':<12} {'Características'}")
     print("-" * 70)
-    
+
     for model_name, result in results.items():
         accuracy = result.get('accuracy', 0)
         f1_score = result.get('f1_score', 0)
-        
+
         # Características especiales de cada modelo
         features = ""
         icon = ""
@@ -186,19 +186,19 @@ def compare_models(results: Dict[str, Dict[str, Any]]) -> None:
         else:
             features = "Modelo base"
             icon = "📦"
-            
+
         print(f"{icon} {model_name.upper():<13} {accuracy:.4f} ({accuracy:.2%}) {f1_score:.4f} {features}")
-    
+
     # Determinar mejor modelo
     best_model = max(results.keys(), key=lambda k: results[k].get('accuracy', 0))
     best_acc = results[best_model]['accuracy']
-    
+
     if best_model == 'orkhestra':
         print(f"\n🏆 MEJOR MODELO: 🎼 ORKHESTRA con {best_acc:.4f} ({best_acc*100:.2f}%)")
         print("    → Sistema de Fusión Inteligente líder en rendimiento")
     else:
         print(f"\n🏆 MEJOR MODELO: {best_model.upper()} con {best_acc:.4f} ({best_acc*100:.2f}%)")
-    
+
     # Mostrar análisis de fusión si está disponible para Orkhestra
     if 'orkhestra' in results and 'fusion_analysis' in results['orkhestra']:
         fusion = results['orkhestra']['fusion_analysis']
@@ -230,7 +230,7 @@ ORKHESTRA - Sistema de Fusión Inteligente:
   ✨ Optimización automática del rendimiento
         """
     )
-    
+
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
         '--model',
@@ -243,9 +243,9 @@ ORKHESTRA - Sistema de Fusión Inteligente:
         action='store_true',
         help='Comparar todos los modelos incluyendo Orkhestra'
     )
-    
+
     args = parser.parse_args()
-    
+
     if args.compare or args.model == 'all':
         results = predict_all_models()
         if results:
@@ -253,7 +253,7 @@ ORKHESTRA - Sistema de Fusión Inteligente:
     else:
         if args.model == 'orkhestra':
             predict_orkhestra()
-            
+
         elif args.model == 'total':
             print("🤖 Evaluando solo Modelo Total (TensorFlow)...")
             evaluator = TotalModelEvaluator()
@@ -262,7 +262,7 @@ ORKHESTRA - Sistema de Fusión Inteligente:
             predictions = evaluator.predict()
             accuracy, f1 = evaluator.calculate_metrics(predictions)
             print(f"✅ Accuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
-            
+
         elif args.model == 'partial':
             print("🎯 Evaluando solo Modelo Parcial (Scikit-learn)...")
             evaluator = PartialModelEvaluator()
@@ -273,7 +273,7 @@ ORKHESTRA - Sistema de Fusión Inteligente:
             coverage = len([p for p in predictions if p != 'Unknown']) / len(predictions)
             print(f"✅ Accuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
             print(f"🎯 Coverage: {coverage:.4f} ({coverage*100:.2f}%)")
-            
+
         elif args.model == 'hybrid':
             print("⚙️ Evaluando solo Modelo Híbrido Clásico...")
             evaluator = HybridModelEvaluator()

@@ -24,14 +24,14 @@ class TotalCoverageModel:
             class_weight='balanced',
             random_state=42
         )
-        
+
         # Calibración con validación cruzada
         self.model = CalibratedClassifierCV(
             base_model,
             method="isotonic",
             cv=3
         )
-        
+
         self.scaler = StandardScaler()
         self.label_encoder = LabelEncoder()
         self.feature_importances_ = None
@@ -73,12 +73,12 @@ class TotalCoverageModel:
         except Exception as e:
             print(f"   ⚠️ No se pudo extraer feature importance: {e}")
             self.feature_importances_ = None
-        
+
         self.feature_names_ = feature_names
 
         # Evaluar con métricas extendidas
         predictions = self.model.predict(X_test_scaled)
-        
+
         accuracy = accuracy_score(y_test, predictions)
         balanced_accuracy = balanced_accuracy_score(y_test, predictions)
         f1 = f1_score(y_test, predictions, average='weighted', zero_division=0)
@@ -89,25 +89,25 @@ class TotalCoverageModel:
             'f1_score': f1,
             'classification_report': classification_report(y_test, predictions)
         }
-    
+
     def get_feature_importance(self, top_n=None):
         """Obtener importancia de características"""
         if not self.is_trained or self.feature_importances_ is None:
             return None
-            
+
         importance_dict = {}
         for i, importance in enumerate(self.feature_importances_):
             feature_name = self.feature_names_[i] if self.feature_names_ else f"feature_{i}"
             importance_dict[feature_name] = importance
-        
+
         # Ordenar por importancia
         sorted_importance = sorted(importance_dict.items(), key=lambda x: x[1], reverse=True)
-        
+
         if top_n:
             sorted_importance = sorted_importance[:top_n]
-            
+
         return sorted_importance
-    
+
     def get_feature_weights(self):
         """Obtener pesos de características para el modelo híbrido"""
         if not self.is_trained or self.feature_importances_ is None:
@@ -138,7 +138,7 @@ class TotalCoverageModel:
         joblib.dump(self.model, model_path)
         joblib.dump(self.scaler, scaler_path)
         joblib.dump(self.label_encoder, encoder_path)
-        
+
         # Guardar también feature importance y nombres
         import os
         base_path = os.path.dirname(model_path)
@@ -153,7 +153,7 @@ class TotalCoverageModel:
         self.scaler = joblib.load(scaler_path)
         self.label_encoder = joblib.load(encoder_path)
         self.is_trained = True
-        
+
         # Cargar también feature importance y nombres
         import os
         base_path = os.path.dirname(model_path)
@@ -163,7 +163,7 @@ class TotalCoverageModel:
                 self.feature_importances_ = joblib.load(importance_path)
         except:
             self.feature_importances_ = None
-            
+
         try:
             names_path = os.path.join(base_path, 'total_feature_names.pkl')
             if os.path.exists(names_path):

@@ -11,7 +11,7 @@ from .hybrid_trainer import HybridModelTrainer
 
 __all__ = [
     'BaseTrainer',
-    'TotalModelTrainer', 
+    'TotalModelTrainer',
     'PartialModelTrainer',
     'HybridModelTrainer'
 ]

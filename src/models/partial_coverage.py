@@ -28,14 +28,14 @@ class PartialCoverageModel:
             subsample=0.8,
             random_state=42
         )
-        
+
         # Calibración con validación cruzada
         self.model = CalibratedClassifierCV(
             base_model,
             method="isotonic",
             cv=3
         )
-        
+
         self.scaler = StandardScaler()
         self.confidence_threshold = confidence_threshold
         self.is_trained = False
@@ -58,25 +58,25 @@ class PartialCoverageModel:
         # Evaluar con métricas extendidas
         predictions = self.model.predict(X_test_scaled)
         probabilities = self.model.predict_proba(X_test_scaled)
-        
+
         # Métricas básicas
         accuracy = accuracy_score(y_test, predictions)
         precision = precision_score(y_test, predictions, average='weighted', zero_division=0)
         recall = recall_score(y_test, predictions, average='weighted', zero_division=0)
         f1 = f1_score(y_test, predictions, average='weighted', zero_division=0)
-        
+
         # Métricas con umbral de confianza
         confident_predictions = self.predict_with_confidence(X_test_scaled)
         confident_mask = confident_predictions != 'uncertain'
-        
+
         coverage = np.mean(confident_mask) if len(confident_mask) > 0 else 0
         confident_accuracy = 0
         if np.any(confident_mask):
             confident_accuracy = accuracy_score(
-                y_test[confident_mask], 
+                y_test[confident_mask],
                 confident_predictions[confident_mask]
             )
-        
+
         return {
             'accuracy': accuracy,
             'precision': precision,
@@ -95,23 +95,23 @@ class PartialCoverageModel:
         probabilities = self.model.predict_proba(X_scaled)
         max_probs = np.max(probabilities, axis=1)
         predictions = self.model.predict(X_scaled)
-        
+
         # Criterio ultra-estricto: confianza alta Y consenso fuerte
         margin = probabilities[:, 1] - probabilities[:, 0]  # Diferencia entre clases
         high_confidence = max_probs >= self.confidence_threshold
         strong_margin = np.abs(margin) >= 0.3  # Margen mínimo de decisión
-        
+
         # Solo predecir en casos ultra-seguros
         ultra_confident = high_confidence & strong_margin
-        
+
         confident_predictions = np.where(
             ultra_confident,
             predictions,
             'Unknown'  # Cambiar a 'Unknown' para compatibilidad
         )
-        
+
         return confident_predictions
-    
+
     def get_confidence_scores(self, X):
         """Obtener puntuaciones de confianza"""
         if not self.is_trained:
