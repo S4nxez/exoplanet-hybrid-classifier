@@ -1,71 +1,82 @@
 #!/usr/bin/env python3
 """
-HYBRID MODEL TRAINER
-====================
-Entrenador específico para el modelo híbrido TensorFlow
+ORKHESTRA HYBRID TRAINER
+========================
+Entrenador específico para el sistema híbrido Orkhestra
 """
 
 from src.trainers.base_trainer import BaseTrainer
 from src.models.partial_coverage import PartialCoverageModel
 from src.models.total_coverage import TotalCoverageModel
-from src.models.tensorflow_hybrid import TensorFlowHybridModel
+from src.models.tensorflow_hybrid import OrkhestraftHybridModel
 from sklearn.metrics import f1_score, accuracy_score
+from sklearn.model_selection import train_test_split
 import numpy as np
 import pickle
 
 
 class HybridModelTrainer(BaseTrainer):
-    """Entrenador para el modelo híbrido TensorFlow"""
+    """Entrenador para el sistema híbrido Orkhestra"""
     
-    def __init__(self, epochs=100, batch_size=64, validation_split=0.2, **kwargs):
+    def __init__(self, confidence_threshold=0.85, auto_optimize=True, 
+                 enable_fusion=True, **kwargs):
         super().__init__(**kwargs)
-        self.model_name = "Modelo Híbrido"
-        self.epochs = epochs
-        self.batch_size = batch_size
-        self.validation_split = validation_split
+        self.model_name = "Sistema Orkhestra"
+        self.confidence_threshold = confidence_threshold
+        self.auto_optimize = auto_optimize
+        self.enable_fusion = enable_fusion
         self.partial_model = None
         self.total_model = None
     
     def create_model(self):
-        """Crear modelos base y modelo híbrido"""
-        print(f"\n🤖 Creando {self.model_name}...")
+        """Crear modelos base y sistema Orkhestra"""
+        print(f"\n🎼 Creando {self.model_name}...")
         
         # Entrenar modelos base
-        print("🎯 Entrenando modelo parcial...")
+        print("🎯 Entrenando modelo parcial (RandomForest ultra-preciso)...")
         self.partial_model = PartialCoverageModel()
         self.partial_model.train(self.X_train, self.y_train)
         
-        print("🌐 Entrenando modelo total...")
+        print("🌐 Entrenando modelo total (TensorFlow completo)...")
         self.total_model = TotalCoverageModel()
         self.total_model.train(self.X_train, self.y_train)
         
-        # Crear modelo híbrido
-        self.model = TensorFlowHybridModel(
+        # Crear sistema Orkhestra
+        print("🎼 Inicializando sistema de fusión Orkhestra...")
+        self.model = OrkhestraftHybridModel(
             partial_model=self.partial_model,
             total_model=self.total_model,
             data_processor=self.processor,
-            enable_cascade=True
+            confidence_threshold=self.confidence_threshold,
+            enable_fusion=self.enable_fusion,
+            auto_optimize=self.auto_optimize
         )
     
     def train_model(self):
-        """Entrenar modelo híbrido TensorFlow"""
-        print(f"🤖 Entrenando {self.model_name}...")
+        """Entrenar sistema Orkhestra con optimización automática"""
+        print(f"🎼 Entrenando {self.model_name}...")
         
-        train_accuracy, history = self.model.train(
-            self.X_train, self.y_train,
-            epochs=self.epochs,
-            batch_size=self.batch_size,
-            validation_split=self.validation_split,
-            verbose=1
+        # Crear datos de validación para optimización de umbral
+        if self.auto_optimize:
+            X_train_split, X_val, y_train_split, y_val = train_test_split(
+                self.X_train, self.y_train, test_size=0.2, random_state=42, stratify=self.y_train
+            )
+        else:
+            X_train_split, X_val, y_train_split, y_val = self.X_train, None, self.y_train, None
+        
+        # Entrenar sistema completo
+        train_accuracy = self.model.train(
+            X_train_split, y_train_split,
+            X_val=X_val, y_val=y_val
         )
         
-        print(f"   ✅ Modelo híbrido entrenado")
-        print(f"   📊 Accuracy en entrenamiento: {train_accuracy:.4f} ({train_accuracy*100:.2f}%)")
+        print(f"   ✅ Sistema Orkhestra entrenado correctamente")
+        print(f"   📊 Umbral de confianza optimizado: {self.model.confidence_threshold:.3f}")
         
         return train_accuracy
     
     def evaluate_model(self):
-        """Evaluar modelo híbrido con análisis comparativo"""
+        """Evaluar sistema Orkhestra con análisis comparativo avanzado"""
         print(f"\n🔬 Evaluando {self.model_name}...")
         
         # Evaluaciones individuales
@@ -75,60 +86,58 @@ class HybridModelTrainer(BaseTrainer):
         partial_pred = self.partial_model.predict(self.X_test)
         partial_accuracy = accuracy_score(self.y_test, partial_pred)
         
-        # Evaluación híbrida
-        hybrid_pred, cascade_used = self.model.predict(self.X_test)
-        hybrid_accuracy = accuracy_score(self.y_test, hybrid_pred)
-        hybrid_f1 = f1_score(self.y_test, hybrid_pred, pos_label='Exoplaneta')
+        # Evaluación Orkhestra con información detallada
+        orkhestra_pred, orkhestra_conf, fusion_info = self.model.predict_with_confidence(self.X_test)
+        orkhestra_accuracy = accuracy_score(self.y_test, orkhestra_pred)
+        orkhestra_f1 = f1_score(self.y_test, orkhestra_pred, pos_label='Exoplaneta')
         
         print(f"📊 RESULTADOS COMPARATIVOS:")
         print(f"   🌐 Modelo Total:     {total_accuracy:.4f} ({total_accuracy*100:.2f}%)")
         print(f"   🎯 Modelo Parcial:   {partial_accuracy:.4f} ({partial_accuracy*100:.2f}%)")
-        print(f"   🤖 Modelo Híbrido:   {hybrid_accuracy:.4f} ({hybrid_accuracy*100:.2f}%)")
-        print(f"   📊 F1-Score Híbrido: {hybrid_f1:.4f}")
+        print(f"   🎼 Sistema Orkhestra: {orkhestra_accuracy:.4f} ({orkhestra_accuracy*100:.2f}%)")
+        print(f"   📊 F1-Score Orkhestra: {orkhestra_f1:.4f}")
         
         # Análisis de mejora
-        mejora_total = hybrid_accuracy - total_accuracy
-        mejora_parcial = hybrid_accuracy - partial_accuracy
+        mejora_total = orkhestra_accuracy - total_accuracy
+        mejora_parcial = orkhestra_accuracy - partial_accuracy
         
         print(f"\n🚀 MEJORAS CONSEGUIDAS:")
         print(f"   📈 Mejora sobre Total:   {mejora_total:+.4f} ({mejora_total*100:+.2f}%)")
         print(f"   📈 Mejora sobre Parcial: {mejora_parcial:+.4f} ({mejora_parcial*100:+.2f}%)")
         
-        # Análisis del sistema de cascada
-        self._analyze_cascade_system(cascade_used, hybrid_pred)
+        # Estadísticas de fusión
+        partial_usage = np.mean(fusion_info['used_partial']) * 100
+        total_usage = np.mean(fusion_info['used_total']) * 100
+        avg_confidence = np.mean(orkhestra_conf)
         
-        return hybrid_accuracy, hybrid_pred
-    
-    def _analyze_cascade_system(self, cascade_used, hybrid_pred):
-        """Analizar el rendimiento del sistema de cascada"""
-        cascade_count = np.sum(cascade_used)
-        stacking_count = len(cascade_used) - cascade_count
+        print(f"\n🎯 ANÁLISIS DE FUSIÓN ORKHESTRA:")
+        print(f"   📊 Uso de modelo parcial: {partial_usage:.1f}%")
+        print(f"   📊 Uso de modelo total:   {total_usage:.1f}%")
+        print(f"   📊 Confianza promedio:    {avg_confidence:.3f}")
+        print(f"   🎯 Umbral de confianza:   {self.model.confidence_threshold:.3f}")
         
-        cascade_accuracy = 0
-        stacking_accuracy = 0
-        
-        if cascade_count > 0:
-            cascade_accuracy = accuracy_score(
-                self.y_test[cascade_used], 
-                hybrid_pred[cascade_used]
+        # Análisis de casos por método
+        if np.any(fusion_info['used_partial']):
+            partial_mask = fusion_info['used_partial']
+            partial_cases_acc = accuracy_score(
+                np.array(self.y_test)[partial_mask], 
+                orkhestra_pred[partial_mask]
             )
+            print(f"   🎯 Accuracy casos parciales: {partial_cases_acc:.3f} ({partial_cases_acc*100:.1f}%)")
         
-        if stacking_count > 0:
-            stacking_accuracy = accuracy_score(
-                self.y_test[~cascade_used], 
-                hybrid_pred[~cascade_used]
+        if np.any(fusion_info['used_total']):
+            total_mask = fusion_info['used_total']
+            total_cases_acc = accuracy_score(
+                np.array(self.y_test)[total_mask], 
+                orkhestra_pred[total_mask]
             )
+            print(f"   🌐 Accuracy casos totales:   {total_cases_acc:.3f} ({total_cases_acc*100:.1f}%)")
         
-        print(f"\n🎯 SISTEMA DE CASCADA:")
-        print(f"   📊 Uso de cascada:     {cascade_count/len(self.y_test)*100:.1f}%")
-        print(f"   📊 Casos con cascada:  {cascade_count} muestras")
-        print(f"   📊 Casos con stacking: {stacking_count} muestras")
-        print(f"   🎯 Accuracy cascada:   {cascade_accuracy:.4f} ({cascade_accuracy*100:.2f}%)")
-        print(f"   🤖 Accuracy stacking:  {stacking_accuracy:.4f} ({stacking_accuracy*100:.2f}%)")
+        return orkhestra_accuracy, orkhestra_pred
     
-    def save_model(self, model_path='saved_models/hybrid_tf_model.keras'):
-        """Guardar todos los modelos del sistema híbrido"""
-        print(f"\n💾 Guardando modelos...")
+    def save_model(self, model_path='saved_models/orkhestra'):
+        """Guardar sistema Orkhestra completo"""
+        print(f"\n💾 Guardando sistema Orkhestra...")
         
         # Guardar modelos base
         with open('saved_models/partial_model.pkl', 'wb') as f:
@@ -137,35 +146,47 @@ class HybridModelTrainer(BaseTrainer):
         with open('saved_models/total_model.pkl', 'wb') as f:
             pickle.dump(self.total_model, f)
         
-        # Guardar modelo híbrido TensorFlow
-        self.model.tf_model.save(model_path)
-        
-        with open('saved_models/hybrid_tf_scaler.pkl', 'wb') as f:
-            pickle.dump(self.model.scaler, f)
+        # Guardar sistema Orkhestra completo
+        self.model.save_model(model_path)
         
         print("   ✅ Modelo parcial guardado en saved_models/partial_model.pkl")
         print("   ✅ Modelo total guardado en saved_models/total_model.pkl")
-        print(f"   ✅ Modelo híbrido guardado en {model_path}")
-        print("   ✅ Scaler híbrido guardado en saved_models/hybrid_tf_scaler.pkl")
+        print(f"   ✅ Sistema Orkhestra guardado en {model_path}_*")
 
 
 def main():
-    """Función principal para entrenar modelo híbrido"""
-    print("🤖 ENTRENADOR DEL MODELO HÍBRIDO")
+    """Función principal para entrenar sistema Orkhestra"""
+    print("🎼 ENTRENADOR DEL SISTEMA ORKHESTRA")
     print("="*50)
     
-    trainer = HybridModelTrainer()
-    model, accuracy = trainer.run_training_pipeline('saved_models/hybrid_tf_model.keras')
+    trainer = HybridModelTrainer(
+        confidence_threshold=0.85,
+        auto_optimize=True,
+        enable_fusion=True
+    )
     
-    # Conclusión específica para híbrido
+    model, accuracy = trainer.run_training_pipeline('saved_models/orkhestra')
+    
+    # Análisis comparativo final
     total_accuracy = accuracy_score(trainer.y_test, trainer.total_model.predict(trainer.X_test))
+    partial_accuracy = accuracy_score(trainer.y_test, trainer.partial_model.predict(trainer.X_test))
     
-    if accuracy > total_accuracy:
-        print(f"   ✅ ¡ÉXITO! El modelo híbrido supera al baseline total")
-        print(f"   📈 Mejora conseguida: {(accuracy - total_accuracy)*100:+.2f}%")
+    print(f"\n🏆 RESULTADO FINAL DEL SISTEMA ORKHESTRA:")
+    
+    if accuracy > max(total_accuracy, partial_accuracy):
+        print(f"   ✅ ¡ÉXITO! Orkhestra supera a ambos modelos individuales")
+        print(f"   📈 Mejora sobre modelo total: {(accuracy - total_accuracy)*100:+.2f}%")
+        print(f"   📈 Mejora sobre modelo parcial: {(accuracy - partial_accuracy)*100:+.2f}%")
     else:
-        print(f"   ⚠️  El modelo híbrido aún no supera al baseline total")
-        print(f"   📉 Diferencia: {(accuracy - total_accuracy)*100:.2f}%")
+        print(f"   ⚠️  Orkhestra necesita más optimización")
+        print(f"   📊 Comparado con total: {(accuracy - total_accuracy)*100:+.2f}%")
+        print(f"   � Comparado con parcial: {(accuracy - partial_accuracy)*100:+.2f}%")
+    
+    # Mostrar configuración final
+    print(f"\n🎯 CONFIGURACIÓN FINAL:")
+    print(f"   📊 Umbral de confianza: {trainer.model.confidence_threshold:.3f}")
+    print(f"   🔧 Fusión habilitada: {trainer.model.enable_fusion}")
+    print(f"   🤖 Auto-optimización: {trainer.model.auto_optimize}")
     
     return model, accuracy
 

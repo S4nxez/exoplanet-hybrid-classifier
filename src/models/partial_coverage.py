@@ -17,14 +17,15 @@ import joblib
 class PartialCoverageModel:
     """Modelo de cobertura parcial con alta precisión y calibración"""
 
-    def __init__(self, confidence_threshold=0.9):
-        # Modelo base con calibración
+    def __init__(self, confidence_threshold=0.95):
+        # Modelo base ultra-conservador para máxima precisión
         base_model = GradientBoostingClassifier(
-            n_estimators=200,
-            learning_rate=0.1,
-            max_depth=6,
-            min_samples_split=10,
-            min_samples_leaf=5,
+            n_estimators=300,
+            learning_rate=0.05,
+            max_depth=8,
+            min_samples_split=20,
+            min_samples_leaf=10,
+            subsample=0.8,
             random_state=42
         )
         
@@ -86,7 +87,7 @@ class PartialCoverageModel:
         }
 
     def predict_with_confidence(self, X):
-        """Predecir solo cuando la confianza supera el umbral"""
+        """Predecir solo cuando la confianza supera el umbral (ultra-selectivo)"""
         if not self.is_trained:
             raise ValueError("El modelo no ha sido entrenado")
 
@@ -95,11 +96,18 @@ class PartialCoverageModel:
         max_probs = np.max(probabilities, axis=1)
         predictions = self.model.predict(X_scaled)
         
-        # Solo devolver predicción si supera el umbral de confianza
+        # Criterio ultra-estricto: confianza alta Y consenso fuerte
+        margin = probabilities[:, 1] - probabilities[:, 0]  # Diferencia entre clases
+        high_confidence = max_probs >= self.confidence_threshold
+        strong_margin = np.abs(margin) >= 0.3  # Margen mínimo de decisión
+        
+        # Solo predecir en casos ultra-seguros
+        ultra_confident = high_confidence & strong_margin
+        
         confident_predictions = np.where(
-            max_probs >= self.confidence_threshold,
+            ultra_confident,
             predictions,
-            'uncertain'
+            'Unknown'  # Cambiar a 'Unknown' para compatibilidad
         )
         
         return confident_predictions

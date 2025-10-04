@@ -10,7 +10,7 @@ import pickle
 import tensorflow as tf
 from sklearn.metrics import accuracy_score
 from src.evaluators.base_evaluator import BaseEvaluator
-from src.models.tensorflow_hybrid import TensorFlowHybridModel
+from src.models.tensorflow_hybrid import OrkhestraftHybridModel
 
 
 class TotalModelEvaluator(BaseEvaluator):
@@ -78,12 +78,11 @@ class HybridModelEvaluator(BaseEvaluator):
         with open('saved_models/hybrid_tf_scaler.pkl', 'rb') as f:
             scaler = pickle.load(f)
         
-        # Crear instancia del modelo híbrido
-        self.model = TensorFlowHybridModel(
+        # Crear instancia del modelo Orkhestra
+        self.model = OrkhestraftHybridModel(
             partial_model=self.partial_model,
             total_model=self.total_model,
-            data_processor=self.processor,
-            enable_cascade=True
+            data_processor=self.processor
         )
         
         # Asignar componentes cargados
@@ -92,9 +91,20 @@ class HybridModelEvaluator(BaseEvaluator):
         self.model.is_trained = True
     
     def predict(self):
-        """Predecir con modelo híbrido"""
-        predictions, self.cascade_used = self.model.predict(self.X_test)
-        return predictions
+        """Predecir con modelo Orkhestra"""
+        try:
+            # El modelo Orkhestra devuelve múltiples valores
+            predictions, confidences, fusion_info = self.model.predict_with_confidence(self.X_test)
+            self.cascade_used = fusion_info.get('used_partial', np.array([False] * len(predictions)))
+            return predictions
+        except Exception as e:
+            # Fallback a método simple si hay problemas
+            try:
+                predictions = self.model.predict(self.X_test)
+                self.cascade_used = np.array([False] * len(predictions))
+                return predictions
+            except Exception as e2:
+                raise e2
     
     def print_results(self, accuracy, f1=None):
         """Imprimir resultados con análisis de cascada"""
@@ -108,24 +118,26 @@ class HybridModelEvaluator(BaseEvaluator):
         stacking_accuracy = 0
         
         if cascade_count > 0:
-            cascade_accuracy = accuracy_score(
-                self.y_test[self.cascade_used], 
-                self.predict()[self.cascade_used] if hasattr(self, '_last_predictions') else self.model.predict(self.X_test)[0][self.cascade_used]
-            )
+            try:
+                cascade_predictions = self.predict()[self.cascade_used] if hasattr(self, '_last_predictions') else self.model.predict(self.X_test)[self.cascade_used]
+                cascade_accuracy = accuracy_score(
+                    self.y_test[self.cascade_used], 
+                    cascade_predictions
+                )
+            except:
+                cascade_accuracy = 0
         
         if stacking_count > 0:
-            stacking_accuracy = accuracy_score(
-                self.y_test[~self.cascade_used], 
-                self.predict()[~self.cascade_used] if hasattr(self, '_last_predictions') else self.model.predict(self.X_test)[0][~self.cascade_used]
-            )
+            try:
+                stacking_predictions = self.predict()[~self.cascade_used] if hasattr(self, '_last_predictions') else self.model.predict(self.X_test)[~self.cascade_used]
+                stacking_accuracy = accuracy_score(
+                    self.y_test[~self.cascade_used], 
+                    stacking_predictions
+                )
+            except:
+                stacking_accuracy = 0
         
         print(f"\n🎯 Análisis del sistema:")
         print(f"   📊 Uso de cascada: {cascade_count/len(self.y_test)*100:.1f}%")
         print(f"   🎯 Accuracy cascada: {cascade_accuracy:.4f} ({cascade_accuracy*100:.2f}%)")
         print(f"   🤖 Accuracy stacking: {stacking_accuracy:.4f} ({stacking_accuracy*100:.2f}%)")
-    
-    def predict(self):
-        """Predecir y guardar resultados para análisis"""
-        predictions, self.cascade_used = self.model.predict(self.X_test)
-        self._last_predictions = predictions
-        return predictions
