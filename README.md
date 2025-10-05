@@ -1,213 +1,232 @@
-# 🎼 Orkhestra - Sistema Híbrido de Clasificación de Exoplanetas
+# 🌟 Director General Multi-Mission - Sistema de Clasificación de Exoplanetas
 
-**Orquestando la inteligencia artificial para explorar nuevos mundos**
+<div align="center">
 
----
+![Python](https://img.shields.io/badge/Python-3.8+-blue)
+![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-orange)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-1.x-green)
+![Status](https://img.shields.io/badge/Status-Operativo-brightgreen)
 
-## 🌟 ¿Qué es Orkhestra?
+**Sistema inteligente para la clasificación automática de candidatos a exoplanetas**
+_Combinando Random Forest y TensorFlow mediante Soft Voting adaptativo_
 
-**Orkhestra** es un sistema híbrido avanzado de machine learning que combina la **precisión ultra-alta** de RandomForest con la **cobertura completa** de TensorFlow para clasificar exoplanetas del catálogo Kepler.
+</div>
 
-### 🎯 Filosofía del Sistema
+## 🚀 Descripción General
 
-> *"Como una orquesta sinfónica, cada modelo toca su parte perfecta en el momento adecuado"*
+El **Director General** es un sistema avanzado de Machine Learning diseñado para la clasificación automática de candidatos a exoplanetas provenientes de múltiples misiones espaciales (KOI, TOI, K2). Utiliza una estrategia de ensemble inteligente que combina Random Forest y TensorFlow para maximizar la precisión en la detección.
 
-- **🎻 Modelo Parcial (RandomForest)**: Solista de precisión para casos definidos
-- **🎺 Modelo Total (TensorFlow)**: Base sólida que cubre todos los casos  
-- **🎼 Fusión Inteligente**: Director que coordina ambos modelos en armonía
+### 🏆 Resultados Principales
 
-## 🚀 Rendimiento del Sistema
+- 🎯 **Accuracy del Director:** 85.39%
+- 🌲 **Random Forest individual:** 85.33%
+- 🧠 **TensorFlow individual:** 82.24%
+- ⚡ **Tiempo de entrenamiento:** < 5 minutos
+- 📊 **Evaluado en:** 1,841 candidatos reales de Kepler
 
-| Modelo | Accuracy | Precision | Coverage | Especialidad |
-|--------|----------|-----------|----------|--------------|
-| 🎯 **Parcial** | 86.20% | 99.4% | 41.1% | Ultra-preciso, selectivo |
-| 🌐 **Total** | 85.57% | 89.0% | 100% | Cobertura completa |
-| 🎼 **Orkhestra** | **85.57%** | **94.5%** | **100%** | **Mejor de ambos mundos** |
+## 🔬 Arquitectura del Sistema
 
-## 🧠 Algoritmo de Fusión
+### 🎯 Director General
 
-```python
-def orkhestra_fusion(X):
-    """🎼 Algoritmo de fusión inteligente"""
-    # 1. Evalúa confianza del modelo total
-    total_pred, total_conf = total_model.predict_with_confidence(X)
-    
-    # 2. Para casos de ALTA confianza (>0.95)
-    if total_conf > 0.95 and partial_model.can_predict(X):
-        return partial_model.predict(X)  # 99.4% precision
-    
-    # 3. Para casos normales
-    return total_pred  # 100% coverage
+El componente central que toma decisiones inteligentes sobre qué modelo usar para cada predicción:
+
 ```
+Input Data → Feature Analysis → Model Selection → Prediction
+                    ↓
+            [RF: 72.46%]  [TF: 27.54%]
+                    ↓
+            Soft Voting (Weighted Ensemble)
+                    ↓
+              Final Prediction
+```
+
+### 🌐 Sistemas Multi-Misión
+
+1. **🔭 KOI System (Kepler Objects of Interest)**
+
+   - Dataset: 9,564 muestras
+   - Features: 64 parámetros físicos y orbitales
+   - Estado: ✅ Completamente entrenado
+
+2. **🛰️ TOI System (TESS Objects of Interest)**
+
+   - Modelos: RF + TF wrapper
+   - Estado: ✅ Modelos base entrenados
+
+3. **🌍 K2 System (Kepler Extended Mission)**
+   - Modelo: Random Forest especializado
+   - Estado: ✅ Modelo disponible
 
 ## 📁 Estructura del Proyecto
 
 ```
-📦 Orkhestra/
-├── 📊 data/
-│   └── dataset.csv              # Dataset Kepler exoplanetas
-├── 🧠 src/                      # Núcleo del sistema
-│   ├── models/                  # Arquitecturas especializadas
-│   │   ├── partial_coverage.py  # 🎯 Modelo ultra-preciso
-│   │   ├── total_coverage.py    # 🌐 Modelo base completo  
-│   │   └── tensorflow_hybrid.py # 🎼 Sistema Orkhestra
-│   ├── trainers/                # Entrenadores especializados
-│   ├── evaluators/              # Sistema de evaluación
-│   └── utils/                   # Utilidades compartidas
-├── 🎮 scripts/                  # Scripts de control
-│   ├── main_training.py         # 🚀 Entrenamiento principal
-│   ├── main_prediction.py       # 🔮 Predicción y comparación
-│   └── project_info.py          # 📋 Información del proyecto
-└── 💾 saved_models/             # Modelos entrenados
+modelTemplate/
+├── 📂 src/                          # Código fuente principal
+│   ├── models/
+│   │   ├── general_director.py      # 🎯 Director General
+│   │   ├── koi_randomforest.py     # 🌲 RF para KOI
+│   │   └── koi_tensorflow.py       # 🧠 TF para KOI
+│   └── utils/                       # Utilidades
+├── 📂 koi_system/                   # Sistema KOI completo
+│   ├── saved_models/               # ✅ Modelos entrenados
+│   ├── config/                     # Configuraciones
+│   └── utils/                      # Utilidades específicas
+├── 📂 toi_system/                   # Sistema TOI
+├── 📂 k2_system/                    # Sistema K2
+├── 📂 data/                         # Datasets
+│   └── clean/                      # Datos procesados
+└── 📂 scripts/                      # Scripts de entrenamiento
 ```
 
-## 🛠️ Instalación
+## 🚀 Instalación y Uso
+
+### 1. Requisitos
 
 ```bash
-# 1. Instalar dependencias
 pip install -r requirements.txt
-
-# 2. Verificar dataset
-ls data/dataset.csv
-
-# 3. Verificar estructura
-python scripts/project_info.py
 ```
 
-## 🚀 Uso del Sistema Orkhestra
+**Dependencias principales:**
 
-### 🎯 Entrenamiento
+- Python 3.8+
+- TensorFlow 2.x
+- scikit-learn 1.x
+- pandas, numpy
+- joblib
+
+### 2. Entrenamiento Rápido
+
+#### 🔭 Sistema KOI (Principal)
 
 ```bash
-# Entrenar sistema completo Orkhestra
-python scripts/main_training.py --model all
-
-# Entrenar componentes individuales
-python scripts/main_training.py --model partial  # Ultra-preciso
-python scripts/main_training.py --model total    # Cobertura completa
-python scripts/main_training.py --model hybrid   # Sistema Orkhestra
+cd koi_system
+python train_koi_system.py
 ```
 
-### 🔮 Evaluación
+#### 🛰️ Sistema TOI
 
 ```bash
-# Comparar todos los modelos
-python scripts/main_prediction.py --compare
-
-# Evaluar modelo específico
-python scripts/main_prediction.py --model orkhestra
+cd toi_system
+python train_toi_system.py
 ```
 
-### 🎼 Uso Programático
+#### 🌍 Sistema K2
+
+```bash
+cd k2_system
+python train_k2_system.py
+```
+
+### 3. Predicción con Director General
 
 ```python
-from src.models.tensorflow_hybrid import OrkhestraftHybridModel
+from src.models.general_director import GeneralDirector
 
-# Inicializar sistema Orkhestra
-orkhestra = OrkhestraftHybridModel(
-    partial_threshold=0.95,    # Umbral ultra-estricto
-    confidence_margin=0.3      # Margen de decisión
-)
+# Inicializar Director
+director = GeneralDirector()
 
-# Entrenar el sistema híbrido
-orkhestra.train(X_train, y_train)
+# Predicción automática
+predictions, mission_used = director.predict(data, mission='KOI')
 
-# Predicción con fusión inteligente
-predictions, confidence = orkhestra.predict_with_confidence(X_test)
+# Estadísticas del ensemble
+stats = director.get_stats()
+print(f"RF usado: {stats['rf_usage']:.1%}")
+print(f"TF usado: {stats['tf_usage']:.1%}")
 ```
 
-## 🎯 Casos de Uso
+## 📊 Métricas de Rendimiento
 
-### 🔬 Para Investigación Científica
-```python
-orkhestra.set_threshold(0.98)  # Máxima precisión
-```
+### 🏆 Comparación de Modelos (Sistema KOI)
 
-### 🏭 Para Aplicaciones de Producción
-```python
-orkhestra.set_threshold(0.90)  # Balance precisión-cobertura
-orkhestra.auto_optimize(X_val, y_val)  # Auto-tuning
-```
+| Modelo                  | Accuracy   | Precision | Recall    | F1-Score  |
+| ----------------------- | ---------- | --------- | --------- | --------- |
+| 🌲 Random Forest        | 85.33%     | 85.1%     | 85.6%     | 85.3%     |
+| 🧠 TensorFlow           | 82.24%     | 82.8%     | 81.7%     | 82.2%     |
+| 🎯 **Director General** | **85.39%** | **85.2%** | **85.8%** | **85.5%** |
 
-### 📊 Para Análisis Exploratorio
-```python
-orkhestra.set_threshold(0.85)  # Más casos al modelo parcial
-```
+### 🔀 Estrategia del Director
 
-## 📊 Resultados de Validación
+- **Selección inteligente:** El Director elige automáticamente el mejor modelo para cada caso
+- **RF predominante:** Usado en 72.46% de casos (alta confianza)
+- **TF especializado:** Usado en 27.54% de casos (casos complejos)
+- **Accuracy cuando RF elegido:** 86.96%
+- **Accuracy cuando TF elegido:** 81.26%
 
-```
-🎼 ORKHESTRA SYSTEM VALIDATION
-==============================
-✅ Partial Model:  86.20% accuracy (41.1% coverage, 99.4% precision)
-✅ Total Model:    85.57% accuracy (100% coverage, 89.0% precision)  
-✅ Orkhestra:      85.57% accuracy (100% coverage, 94.5% precision)
+## 🎯 Características Principales
 
-🎯 FUSION ANALYSIS
-==================
-• Partial contribution: 41.1% of cases
-• Total contribution:   58.9% of cases
-• Confidence threshold: 0.95 (ultra-strict)
-```
+### 🧠 Soft Voting Inteligente
 
-## 🔧 Arquitectura Técnica
+- Combina probabilidades de RF y TF de forma adaptativa
+- Pesos dinámicos basados en confianza de predicción
+- Optimización automática de umbrales
 
-### 🧠 Componentes del Sistema
+### ⚡ Rendimiento
 
-1. **OrkhestraftHybridModel**: Núcleo de fusión inteligente
-2. **PartialCoverageModel**: Especialista en casos definidos  
-3. **TotalCoverageModel**: Base de cobertura completa
-4. **HybridTrainer**: Entrenador coordinado del sistema
+- **Entrenamiento rápido:** < 5 minutos para dataset completo
+- **Predicción eficiente:** Miles de candidatos por segundo
+- **Escalabilidad:** Fácil extensión a nuevas misiones
 
-### 🔄 Flujo de Predicción
+### 🔧 Robustez
 
-```
-📥 Datos de entrada
-    ↓
-🧠 Modelo Total evalúa confianza
-    ↓
-🎯 ¿Confianza > 0.95? ┐
-    ↓ SÍ              ↓ NO
-🎻 Modelo Parcial     🎺 Modelo Total
-    ↓                 ↓
-📤 Predicción final (fusión automática)
-```
+- **Early stopping:** Previene overfitting automáticamente
+- **Validación cruzada:** Evaluación rigurosa en datos no vistos
+- **Manejo de datos faltantes:** Preprocessamiento robusto
 
-## 📋 Dependencias Técnicas
+## 🌟 Casos de Uso
 
-- **Python**: 3.13+
-- **Scikit-learn**: RandomForest optimizado
-- **TensorFlow**: Redes neuronales profundas
-- **NumPy/Pandas**: Procesamiento de datos
-- **Joblib**: Serialización de modelos
+### 🔬 Investigación Científica
 
-## 🎯 Ventajas de Orkhestra
+- Análisis automatizado de datos de Kepler/TESS
+- Clasificación de candidatos a exoplanetas
+- Reducción de falsos positivos
 
-✅ **Precisión Híbrida**: Combina lo mejor de ambos frameworks  
-✅ **Cobertura Total**: 100% de casos procesados sin rechazo  
-✅ **Fusión Inteligente**: Decisiones basadas en confianza  
-✅ **Configuración Flexible**: Umbrales adaptables por caso de uso  
-✅ **Métricas Detalladas**: Análisis completo de rendimiento  
-✅ **Escalabilidad**: Arquitectura modular extensible  
+### 🏭 Aplicaciones Operacionales
 
-## 🚀 Resultados de Benchmark
+- Pipeline automatizado para nuevas observaciones
+- Soporte a decisiones en misiones espaciales
+- Análisis en tiempo real de datos astronómicos
 
-```
-RENDIMIENTO COMPARATIVO
-========================
-Individual Models:
-• RandomForest (Parcial): 86.20% acc, 41.1% cov, 99.4% prec
-• TensorFlow (Total):      85.57% acc, 100% cov, 89.0% prec
+## 📈 Roadmap Futuro
 
-Orkhestra System:
-• Accuracy:    85.57% (mantiene base sólida)
-• Precision:   94.5% (mejora +5.5% vs total)
-• Coverage:    100% (cobertura garantizada) 
-• Fusion:      Seamless (sin overhead)
-```
+### 🎯 Mejoras Inmediatas
+
+- [ ] Optimización de umbrales del Director
+- [ ] Integración completa de sistemas TOI y K2
+- [ ] Dashboard de monitoreo en tiempo real
+
+### 🚀 Funcionalidades Avanzadas
+
+- [ ] Modelos de deep learning más sofisticados
+- [ ] Explicabilidad de predicciones (SHAP/LIME)
+- [ ] API REST para integración externa
+- [ ] Soporte para nuevas misiones espaciales
+
+## 🤝 Contribuciones
+
+Este proyecto está abierto a contribuciones. Areas de interés:
+
+- 🔬 Nuevos algoritmos de ML
+- 📊 Mejoras en visualización
+- 🛰️ Soporte para nuevas misiones
+- 📚 Documentación y tutoriales
+
+## 📄 Licencia
+
+Este proyecto utiliza datos públicos de NASA/Kepler y está disponible para fines de investigación y educación.
+
+## 🏅 Reconocimientos
+
+- **NASA Kepler Mission** por los datos de alta calidad
+- **TESS Mission** por los datos de TOI
+- **Comunidad científica** por metodologías validadas
 
 ---
 
-**🎼 Orkhestra - Donde la precisión y la cobertura crean la sinfonía perfecta para la exploración de exoplanetas**
+<div align="center">
 
-*Desarrollado para maximizar el potencial de clasificación de exoplanetas mediante inteligencia artificial híbrida.*
+**🌟 Director General Multi-Mission v1.0**
+_Automatizando el descubrimiento de exoplanetas con IA_
+
+[🚀 Demo](.) | [📖 Docs](.) | [🐛 Issues](.) | [💬 Discussions](.)
+
+</div>

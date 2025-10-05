@@ -1,0 +1,9 @@
+{
+  "rf_usage_percentage": 73.81857686040195,
+  "tf_usage_percentage": 26.181423139598042,
+  "rf_count": 1359,
+  "tf_count": 482,
+  "director_accuracy": 0.8555133079847909,
+  "rf_accuracy": 0.8533405757740359,
+  "tf_accuracy": 0.8158609451385117
+}
