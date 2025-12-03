@@ -18,6 +18,35 @@ sys.path.insert(0, str(PROJECT_ROOT / "k2_system"))
 from koi_system.core.director import KOIDirector
 from toi_system.core.director import TOIDirector
 from k2_system.models.k2_director import K2Director
+from koi_system.config.koi_config import KOIConfig
+
+# La misión TOI a�n no expone un módulo de configuración formal, por lo que
+# definimos aqu� la lista de columnas utilizada en los scripts de entrenamiento.
+TOI_FEATURES = [
+    'pl_orbper',    # Per�odo orbital
+    'pl_trandurh',  # Duración del tránsito (horas)
+    'pl_trandep',   # Profundidad del tránsito (ppm)
+    'pl_rade',      # Radio planetario
+    'pl_insol',     # Insolación
+    'pl_eqt',       # Temperatura de equilibrio
+    'st_tmag',      # Magnitud TESS
+    'st_dist',      # Distancia a la estrella
+    'st_teff',      # Temperatura estelar
+    'st_logg',      # Gravedad estelar
+    'st_rad'        # Radio estelar
+]
+
+# La misión K2 opera con un subconjunto estable de columnas tabulares.
+K2_FEATURES = [
+    'pl_orbper',
+    'pl_rade',
+    'st_teff',
+    'st_rad',
+    'st_mass',
+    'sy_dist',
+    'pl_eqt',
+    'pl_orbsmax'
+]
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +91,13 @@ class GeneralDirector:
             'TOI': 0,
             'K2': 0,
             'Unknown': 0
+        }
+
+        # Orden de columnas esperado por cada misión (coincide con los scalers entrenados)
+        self.feature_sets = {
+            'KOI': list(KOIConfig.FEATURES),
+            'TOI': TOI_FEATURES,
+            'K2': K2_FEATURES
         }
 
         logger.info("Director General inicializado")
@@ -267,6 +303,35 @@ class GeneralDirector:
         logger.warning(f"No se pudo identificar misión. Coincidencias: {matches}")
         return 'Unknown'
 
+    def _prepare_features(self, X, mission):
+        """Selecciona y ordena las columnas esperadas por cada director."""
+        expected_features = self.feature_sets.get(mission)
+        if expected_features is None:
+            raise ValueError(f"No hay esquema de features para la misión {mission}")
+
+        if isinstance(X, pd.DataFrame):
+            missing = [col for col in expected_features if col not in X.columns]
+            if missing:
+                raise ValueError(
+                    f"Faltan columnas requeridas para la misión {mission}: {missing}"
+                )
+            prepared = X[expected_features].copy()
+            return prepared.to_numpy()
+
+        # Si llega un array, validar dimensiones.
+        X_array = np.asarray(X)
+        if X_array.ndim == 1:
+            X_array = X_array.reshape(1, -1)
+
+        expected_len = len(expected_features)
+        if X_array.shape[1] != expected_len:
+            raise ValueError(
+                f"Se esperaban {expected_len} features para la misión {mission} "
+                f"pero se recibieron {X_array.shape[1]}"
+            )
+
+        return X_array
+
     def configure(self, mission, rf_model, rf_scaler, tf_model, tf_scaler):
         """
         Configura un director específico de misión
@@ -325,7 +390,13 @@ class GeneralDirector:
             mission = mission.upper()
 
         # Verificar que la misión sea válida
-        if mission not in ['KOI', 'TOI', 'K2']:
+        valid_missions = {'KOI', 'TOI', 'K2'}
+        if mission not in valid_missions:
+            if mission == 'UNKNOWN':
+                raise ValueError(
+                    "No se pudo identificar la misión automáticamente. "
+                    "Especifique el parámetro 'mission' o provea un DataFrame con las columnas completas."
+                )
             raise ValueError(f"Misión inválida: {mission}")
 
         # Verificar que el director esté configurado
@@ -335,11 +406,8 @@ class GeneralDirector:
                 f"Use configure('{mission}', rf_model, rf_scaler, tf_model, tf_scaler)"
             )
 
-        # Convertir DataFrame a numpy array para los directores
-        if isinstance(X, pd.DataFrame):
-            X_array = X.values
-        else:
-            X_array = X
+        # Alinear features con los modelos de cada misión
+        X_array = self._prepare_features(X, mission)
 
         # Delegar al director correspondiente
         if mission == 'KOI':
@@ -378,14 +446,20 @@ class GeneralDirector:
         else:
             mission = mission.upper()
 
+        valid_missions = {'KOI', 'TOI', 'K2'}
+        if mission not in valid_missions:
+            if mission == 'UNKNOWN':
+                raise ValueError(
+                    "No se pudo identificar la misión automáticamente. "
+                    "Especifique el parámetro 'mission' o provea un DataFrame con las columnas completas."
+                )
+            raise ValueError(f"Misión inválida: {mission}")
+
         if not self.directors_configured[mission]:
             raise ValueError(f"Director {mission} no configurado")
 
-        # Convertir a array
-        if isinstance(X, pd.DataFrame):
-            X_array = X.values
-        else:
-            X_array = X
+        # Convertir a array alineado con los scalers
+        X_array = self._prepare_features(X, mission)
 
         # Obtener probabilidades del director
         if mission == 'KOI':
@@ -394,10 +468,6 @@ class GeneralDirector:
             director = self.toi_director
         elif mission == 'K2':
             director = self.k2_director
-
-        # Asegurar que X es 2D
-        if len(X_array.shape) == 1:
-            X_array = X_array.reshape(1, -1)
 
         # Calcular probabilidades usando Soft Voting
         X_rf = director.rf_scaler.transform(X_array)

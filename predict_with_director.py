@@ -20,8 +20,8 @@ def demo_predictions():
     print("🎯 DIRECTOR GENERAL MULTI-MISIÓN")
     print("="*50)
     print("🔭 KOI: 3 submodelos (RF + TF + Director)")
-    print("🛰️ TOI: 3 submodelos (RF + TF + Director)")
-    print("🌍 K2: 3 submodelos (RF + TF + Director)")
+    print("🛰︝ TOI: 3 submodelos (RF + TF + Director)")
+    print("🌝 K2: 3 submodelos (RF + TF + Director)")
     print("📊 Total: 9 submodelos coordinados")
     print("="*50)
 
@@ -38,8 +38,8 @@ def demo_predictions():
         k2_available = hasattr(director, 'k2_director') and director.k2_director is not None
 
         print(f"   🔭 KOI System: {'✅ Disponible' if koi_available else '❌ No disponible'}")
-        print(f"   🛰️ TOI System: {'✅ Disponible' if toi_available else '❌ No disponible'}")
-        print(f"   🌍 K2 System: {'✅ Disponible' if k2_available else '❌ No disponible'}")
+        print(f"   🛰︝ TOI System: {'✅ Disponible' if toi_available else '❌ No disponible'}")
+        print(f"   🌝 K2 System: {'✅ Disponible' if k2_available else '❌ No disponible'}")
 
         # Verificar datasets
         print("\n📂 Verificando datasets...")
@@ -65,13 +65,13 @@ def demo_predictions():
 
             # Hacer predicciones
             try:
-                predictions = director.predict(sample_data, mission='KOI')
+                predictions, _ = director.predict(sample_data, mission='KOI')
                 print(f"   ✅ Predicciones completadas")
-                print(f"   🎯 Planetas detectados: {sum(predictions)}/{len(predictions)}")
+                print(f"   🎯 Planetas detectados: {int(predictions.sum())}/{len(predictions)}")
 
                 # Mostrar algunas predicciones individuales
                 for i, pred in enumerate(predictions[:3]):
-                    planeta_str = "🪐 PLANETA" if pred == 1 else "⭕ NO PLANETA"
+                    planeta_str = "🪝 PLANETA" if pred == 1 else "⭕ NO PLANETA"
                     print(f"   📋 Candidato {i+1}: {planeta_str}")
 
             except Exception as e:
@@ -79,27 +79,27 @@ def demo_predictions():
 
         # Test con TOI si está disponible
         if toi_available and toi_data.exists():
-            print("\n🛰️ PROBANDO SISTEMA TOI...")
+            print("\n🛰︝ PROBANDO SISTEMA TOI...")
             try:
                 df_toi = pd.read_csv(toi_data)
                 sample_size = min(5, len(df_toi))
                 sample_data = df_toi.sample(n=sample_size)
 
-                predictions = director.predict(sample_data, mission='TOI')
-                print(f"   ✅ TOI: {sum(predictions)}/{len(predictions)} planetas detectados")
+                predictions, _ = director.predict(sample_data, mission='TOI')
+                print(f"   ✅ TOI: {int(predictions.sum())}/{len(predictions)} planetas detectados")
             except Exception as e:
                 print(f"   ❌ Error en predicciones TOI: {e}")
 
         # Test con K2 si está disponible
         if k2_available and k2_data.exists():
-            print("\n🌍 PROBANDO SISTEMA K2...")
+            print("\n🌝 PROBANDO SISTEMA K2...")
             try:
                 df_k2 = pd.read_csv(k2_data)
                 sample_size = min(5, len(df_k2))
                 sample_data = df_k2.sample(n=sample_size)
 
-                predictions = director.predict(sample_data, mission='K2')
-                print(f"   ✅ K2: {sum(predictions)}/{len(predictions)} planetas detectados")
+                predictions, _ = director.predict(sample_data, mission='K2')
+                print(f"   ✅ K2: {int(predictions.sum())}/{len(predictions)} planetas detectados")
             except Exception as e:
                 print(f"   ❌ Error en predicciones K2: {e}")
 
@@ -109,9 +109,9 @@ def demo_predictions():
         print(f"   🧠 Submodelos activos: {available_systems * 3}/9")
 
         if available_systems == 3:
-            print(f"   🏆 ¡DIRECTOR GENERAL COMPLETAMENTE OPERATIVO!")
+            print(f"   🝆 ¡DIRECTOR GENERAL COMPLETAMENTE OPERATIVO!")
         elif available_systems > 0:
-            print(f"   ⚠️  Director parcialmente operativo")
+            print(f"   ⚠︝  Director parcialmente operativo")
         else:
             print(f"   ❌ Director no operativo - entrenar sistemas primero")
 
@@ -135,8 +135,8 @@ def interactive_prediction():
         while True:
             print("\n🎯 Opciones:")
             print("1. 🔭 Predecir KOI")
-            print("2. 🛰️ Predecir TOI")
-            print("3. 🌍 Predecir K2")
+            print("2. 🛰︝ Predecir TOI")
+            print("3. 🌝 Predecir K2")
             print("4. 📊 Ver estadísticas")
             print("5. ❌ Salir")
 
@@ -147,11 +147,11 @@ def interactive_prediction():
                 # Aquí iría la lógica específica para KOI
 
             elif choice == '2':
-                print("🛰️ Modo TOI seleccionado")
+                print("🛰︝ Modo TOI seleccionado")
                 # Aquí iría la lógica específica para TOI
 
             elif choice == '3':
-                print("🌍 Modo K2 seleccionado")
+                print("🌝 Modo K2 seleccionado")
                 # Aquí iría la lógica específica para K2
 
             elif choice == '4':
