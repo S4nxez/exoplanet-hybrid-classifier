@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""
-🛠️ K2 DATA UTILITIES
-====================
-Utilidades para carga, preprocesamiento y manejo de datos K2.
-"""
+"""Utilities for loading, cleaning, and preparing K2 mission data."""
 
 import numpy as np
 import pandas as pd
@@ -15,7 +11,38 @@ from sklearn.impute import SimpleImputer
 import warnings
 warnings.filterwarnings('ignore')
 
-from config.k2_config import K2Config, FeatureConfig, LogConfig
+from ..config.k2_config import K2Config, FeatureConfig, LogConfig
+
+PHYSICAL_TARGET_FEATURES = [
+    'pl_orbper',
+    'pl_rade',
+    'st_teff',
+    'st_rad',
+    'st_mass',
+    'sy_dist',
+]
+
+
+def build_physical_target(df: pd.DataFrame) -> np.ndarray:
+    """Derive a deterministic binary label based on simple physical bounds."""
+
+    missing = [col for col in PHYSICAL_TARGET_FEATURES if col not in df.columns]
+    if missing:
+        raise ValueError(f"Missing columns for synthetic K2 target: {missing}")
+
+    work = df[PHYSICAL_TARGET_FEATURES].copy()
+    work = work.fillna(work.median())
+
+    mask = (
+        work['pl_orbper'].between(0.3, 500)
+        & work['pl_rade'].between(0.3, 25)
+        & work['st_teff'].between(3000, 8000)
+        & work['st_rad'].between(0.1, 10)
+        & work['st_mass'].between(0.1, 5)
+        & (work['sy_dist'] < 2000)
+    )
+
+    return mask.astype(int).to_numpy()
 
 # Configurar logging
 logging.basicConfig(level=getattr(logging, LogConfig.LOG_LEVEL))
@@ -30,9 +57,9 @@ class K2DataLoader:
         self.imputer = SimpleImputer(strategy='median')
         self.data_stats = {}
 
-    def load_data(self, data_path, target_column='koi_disposition'):
+    def load_data(self, data_path, target_column=None):
         """Carga datos desde archivo"""
-        logger.info(f"📁 Cargando datos desde: {data_path}")
+        logger.info(f"Loading data from {data_path}")
 
         # Detectar formato de archivo
         data_path = Path(data_path)
@@ -43,8 +70,8 @@ class K2DataLoader:
         else:
             raise ValueError(f"Formato de archivo no soportado: {data_path.suffix}")
 
-        logger.info(f"📊 Datos cargados: {df.shape}")
-        logger.info(f"📊 Columnas disponibles: {len(df.columns)}")
+        logger.info(f"Data shape: {df.shape}")
+        logger.info(f"Column count: {len(df.columns)}")
 
         # Guardar información básica
         self.target_column = target_column
@@ -55,7 +82,7 @@ class K2DataLoader:
 
     def prepare_features(self, df):
         """Prepara características para el modelo"""
-        logger.info("🔧 Preparando características...")
+        logger.info("Preparing feature columns")
 
         # Identificar características disponibles
         available_features = []
@@ -65,14 +92,14 @@ class K2DataLoader:
             if feature in df.columns:
                 available_features.append(feature)
             else:
-                logger.warning(f"⚠️ Característica no encontrada: {feature}")
+                logger.warning(f"Missing feature: {feature}")
 
         # Crear características derivadas si es posible
         derived_features = self._create_derived_features(df)
         available_features.extend(derived_features)
 
         self.feature_columns = available_features
-        logger.info(f"✅ Características preparadas: {len(self.feature_columns)}")
+        logger.info(f"Features available: {len(self.feature_columns)}")
 
         return self.feature_columns
 
@@ -111,16 +138,16 @@ class K2DataLoader:
                 df['stellar_density'] = df['st_mass'] / (df['st_rad'] ** 3)
                 derived.append('stellar_density')
 
-            logger.info(f"✅ Características derivadas creadas: {len(derived)}")
+            logger.info(f"Derived features created: {len(derived)}")
 
         except Exception as e:
-            logger.warning(f"⚠️ Error creando características derivadas: {e}")
+            logger.warning(f"Error creating derived features: {e}")
 
         return derived
 
     def clean_data(self, df):
         """Limpia y valida datos"""
-        logger.info("🧹 Limpiando datos...")
+        logger.info("Cleaning dataset")
 
         original_size = len(df)
 
@@ -140,10 +167,10 @@ class K2DataLoader:
         final_size = len(df)
         removed = original_size - final_size
 
-        logger.info(f"📊 Limpieza completada:")
-        logger.info(f"   Filas originales: {original_size}")
-        logger.info(f"   Filas finales: {final_size}")
-        logger.info(f"   Filas eliminadas: {removed} ({removed/original_size*100:.1f}%)")
+        logger.info("Cleaning summary:")
+        logger.info(f"   Original rows: {original_size}")
+        logger.info(f"   Final rows: {final_size}")
+        logger.info(f"   Removed rows: {removed} ({removed/original_size*100:.1f}%)")
 
         self.data_stats['cleaned_shape'] = df.shape
         self.data_stats['removed_rows'] = removed
@@ -151,30 +178,30 @@ class K2DataLoader:
         return df
 
     def prepare_target(self, df):
-        """Prepara variable objetivo"""
-        logger.info(f"🎯 Preparando variable objetivo: {self.target_column}")
+        """Return a binary target vector, deriving it when necessary."""
+        if self.target_column and self.target_column in df.columns:
+            logger.info(f"Preparing target column: {self.target_column}")
+            target = df[self.target_column].copy()
 
-        if self.target_column not in df.columns:
-            raise ValueError(f"Columna objetivo no encontrada: {self.target_column}")
+            if target.dtype == 'object':
+                positive_labels = {'CONFIRMED', 'CANDIDATE', 'confirmed', 'candidate', '1', 1}
+                target = target.isin(positive_labels).astype(int)
+            else:
+                target = target.fillna(0).astype(int)
+        else:
+            logger.warning("Target column missing; deriving synthetic label from physical rules")
+            generated = build_physical_target(df)
+            target = pd.Series(generated, index=df.index, name='k2_physical_target')
+            self.target_column = 'k2_physical_target'
 
-        # Mapear a binario si es necesario
-        target = df[self.target_column].copy()
-
-        if target.dtype == 'object':
-            # Mapear categorías comunes de exoplanetas
-            positive_labels = ['CONFIRMED', 'CANDIDATE', 'confirmed', 'candidate', 1, '1']
-            target = target.isin(positive_labels).astype(int)
-
-        # Estadísticas de la variable objetivo
-        target_counts = np.bincount(target)
+        target_array = target.astype(int).to_numpy()
+        target_counts = np.bincount(target_array, minlength=2)
         total = len(target)
-
-        logger.info(f"📊 Distribución objetivo:")
-        logger.info(f"   Clase 0 (No exoplaneta): {target_counts[0]} ({target_counts[0]/total*100:.1f}%)")
-        logger.info(f"   Clase 1 (Exoplaneta): {target_counts[1]} ({target_counts[1]/total*100:.1f}%)")
+        logger.info("Target distribution:")
+        logger.info(f"   Class 0: {target_counts[0]} ({target_counts[0]/total*100:.1f}%)")
+        logger.info(f"   Class 1: {target_counts[1]} ({target_counts[1]/total*100:.1f}%)")
 
         self.data_stats['target_distribution'] = target_counts.tolist()
-
         return target
 
     def split_data(self, X, y, test_size=None, val_size=None):
@@ -214,7 +241,7 @@ class K2DataLoader:
 
         return X_train, X_val, X_test, y_train, y_val, y_test
 
-    def get_processed_data(self, data_input, target_column='koi_disposition'):
+    def get_processed_data(self, data_input, target_column=None):
         """Pipeline completo de procesamiento"""
         logger.info("🚀 Iniciando pipeline de procesamiento de datos")
 
@@ -320,7 +347,7 @@ class K2DataValidator:
 
 def load_k2_sample_data():
     """Carga datos de muestra para testing"""
-    logger.info("📁 Generando datos de muestra K2...")
+    logger.info("📝 Generando datos de muestra K2...")
 
     np.random.seed(K2Config.RANDOM_SEED)
     n_samples = 1000
@@ -347,15 +374,15 @@ def load_k2_sample_data():
         np.random.random(n_samples) * 0.3
     )
 
-    df['koi_disposition'] = (exo_prob > 0.6).astype(int)
+    df['k2_physical_target'] = (exo_prob > 0.6).astype(int)
 
     logger.info(f"✅ Datos de muestra generados: {df.shape}")
-    logger.info(f"📊 Distribución: {np.bincount(df['koi_disposition'])}")
+    logger.info(f"📊 Distribución: {np.bincount(df['k2_physical_target'])}")
 
     return df
 
 if __name__ == "__main__":
-    print("🛠️ K2 Data Utilities")
+    print("🛠︝ K2 Data Utilities")
     print("Utilidades para procesamiento de datos K2")
 
     # Ejemplo de uso

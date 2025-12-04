@@ -17,7 +17,7 @@ from plotly.subplots import make_subplots
 import logging
 from pathlib import Path
 
-from config.k2_config import EvalConfig, LogConfig
+from ..config.k2_config import EvalConfig, LogConfig
 
 # Configurar logging
 logging.basicConfig(level=getattr(logging, LogConfig.LOG_LEVEL))

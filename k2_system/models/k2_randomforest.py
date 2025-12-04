@@ -17,7 +17,7 @@ import joblib
 import logging
 from pathlib import Path
 
-from config.k2_config import RFConfig, K2Config, LogConfig, EvalConfig
+from ..config.k2_config import RFConfig, K2Config, LogConfig, EvalConfig
 
 # Configurar logging
 logging.basicConfig(level=getattr(logging, LogConfig.LOG_LEVEL))

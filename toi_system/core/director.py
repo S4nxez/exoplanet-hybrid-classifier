@@ -1,11 +1,22 @@
-"""
-TOI Director - Soft Voting Ensemble
-Combina Random Forest y TensorFlow usando votación ponderada
-"""
-import numpy as np
+"""Dynamic expert selector for the TOI mission."""
+
+from __future__ import annotations
+
 import logging
+from dataclasses import dataclass
+import numpy as np
+
+from ..utils.config import TOIFeatures, TOIGatingThresholds
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class _Thresholds:
+    confidence_gap: float
+    minimum_confidence: float
+    complexity_threshold: float
+
 
 class TOIDirector:
     def __init__(self):
@@ -15,67 +26,109 @@ class TOIDirector:
         self.tf_scaler = None
         self.is_trained = False
         self.decision_stats = {'RandomForest': 0, 'TensorFlow': 0}
+        self.feature_index = {name: idx for idx, name in enumerate(TOIFeatures.CORE)}
+        cfg = TOIGatingThresholds()
+        self.thresholds = _Thresholds(cfg.confidence_gap, cfg.minimum_confidence, cfg.complexity_threshold)
 
-    def predict(self, X, return_model_choice=False):
-        if not self.is_trained:
-            raise ValueError("Director no configurado")
-
-        # Ensure X is 2D
-        if len(X.shape) == 1:
+    def _ensure_2d(self, X):
+        X = np.asarray(X)
+        if X.ndim == 1:
             X = X.reshape(1, -1)
+        return X
 
-        # Scale data for both models
+    def _complexity_score(self, X: np.ndarray) -> np.ndarray:
+        period = np.clip(X[:, self.feature_index['pl_orbper']], 0, 1000)
+        duration = np.clip(X[:, self.feature_index['pl_trandurh']], 0, 20)
+        depth = np.clip(X[:, self.feature_index['pl_trandep']], 0, 2000)
+        magnitude = np.clip(X[:, self.feature_index['st_tmag']], 5, 18)
+        teff = np.clip(X[:, self.feature_index['st_teff']], 2500, 9000)
+
+        period_score = period / 1000
+        duration_score = duration / 20
+        depth_score = 1 - depth / 2000
+        mag_score = (magnitude - 5) / 13
+        teff_score = (teff - 2500) / (9000 - 2500)
+
+        return 0.3 * period_score + 0.2 * duration_score + 0.2 * depth_score + 0.15 * mag_score + 0.15 * teff_score
+
+    def _model_confidences(self, X: np.ndarray):
         X_rf = self.rf_scaler.transform(X)
         X_tf = self.tf_scaler.transform(X)
 
-        # ESTRATEGIA: SOFT VOTING PONDERADO (75% RF, 25% TF)
-        # Esta estrategia demostró superar a RF solo en KOI (85.39% vs 85.33%)
+        rf_probs = self.rf_model.predict_proba(X_rf)[:, 1]
+        tf_probs = self.tf_model.predict(X_tf, verbose=0).flatten()
 
-        # Obtener probabilidades de ambos modelos
-        rf_proba = self.rf_model.predict_proba(X_rf)[:, 1]  # Prob de clase 1
-        tf_proba = self.tf_model.predict(X_tf, verbose=0).flatten()  # Prob de clase 1
+        rf_conf = np.abs(rf_probs - 0.5)
+        tf_conf = np.abs(tf_probs - 0.5)
+        return rf_probs, tf_probs, rf_conf, tf_conf
 
-        # Promedio ponderado optimizado
-        RF_WEIGHT = 0.75
-        TF_WEIGHT = 0.25
-        ensemble_proba = RF_WEIGHT * rf_proba + TF_WEIGHT * tf_proba
+    def select_expert(self, X):
+        X = self._ensure_2d(X)
+        complexity = self._complexity_score(X)
+        _, _, rf_conf, tf_conf = self._model_confidences(X)
 
-        # Predicción final
-        predictions = (ensemble_proba > 0.5).astype(int)
+        selections = []
+        for comp, rf_c, tf_c in zip(complexity, rf_conf, tf_conf):
+            max_conf = max(rf_c, tf_c)
+            if max_conf >= self.thresholds.minimum_confidence:
+                diff = rf_c - tf_c
+                if diff > self.thresholds.confidence_gap:
+                    selections.append('RandomForest')
+                    continue
+                if -diff > self.thresholds.confidence_gap:
+                    selections.append('TensorFlow')
+                    continue
 
-        # Para tracking, determinar qué modelo "dominó" la decisión
-        model_choices = []
-        for i in range(len(X)):
-            if rf_proba[i] > 0.5 and tf_proba[i] > 0.5:
-                # Ambos predicen clase 1
-                model_used = 'RandomForest' if rf_proba[i] > tf_proba[i] else 'TensorFlow'
-            elif rf_proba[i] <= 0.5 and tf_proba[i] <= 0.5:
-                # Ambos predicen clase 0
-                model_used = 'RandomForest' if (1-rf_proba[i]) > (1-tf_proba[i]) else 'TensorFlow'
+            # fallback on complexity heuristics
+            if comp <= self.thresholds.complexity_threshold:
+                selections.append('RandomForest')
             else:
-                # Desacuerdo - el que predice la clase ganadora
-                model_used = 'RandomForest' if predictions[i] == (rf_proba[i] > 0.5) else 'TensorFlow'
+                selections.append('TensorFlow')
 
-            model_choices.append(model_used)
-            self.decision_stats[model_used] += 1
+        if len(selections) == 1:
+            return selections[0]
+        return np.array(selections)
+
+    def predict(self, X, return_model_choice=False):
+        if not self.is_trained:
+            raise ValueError("Director not configured")
+
+        X = self._ensure_2d(X)
+        selections = self.select_expert(X)
+        if isinstance(selections, str):
+            selections = np.array([selections])
+
+        preds = np.zeros(X.shape[0], dtype=int)
+        rf_mask = selections == 'RandomForest'
+        tf_mask = selections == 'TensorFlow'
+
+        if np.any(rf_mask):
+            X_rf = self.rf_scaler.transform(X[rf_mask])
+            preds[rf_mask] = self.rf_model.predict(X_rf)
+
+        if np.any(tf_mask):
+            X_tf = self.tf_scaler.transform(X[tf_mask])
+            tf_preds = self.tf_model.predict(X_tf, verbose=0).flatten()
+            preds[tf_mask] = (tf_preds > 0.5).astype(int)
+
+        for choice in selections:
+            self.decision_stats[choice] += 1
 
         if return_model_choice:
-            return predictions, model_choices[0] if len(model_choices) == 1 else model_choices
-
-        return predictions
+            selection_output = selections[0] if len(selections) == 1 else selections.tolist()
+            return preds, selection_output
+        return preds
 
     def configure(self, rf_model, rf_scaler, tf_model, tf_scaler):
-        """Configura el Director con los modelos entrenados"""
         self.rf_model = rf_model
         self.rf_scaler = rf_scaler
         self.tf_model = tf_model
         self.tf_scaler = tf_scaler
         self.is_trained = True
         self.decision_stats = {'RandomForest': 0, 'TensorFlow': 0}
-        logger.info("✅ TOI Director configurado con Soft Voting (RF: 75%, TF: 25%)")
+        logger.info("TOI Director configured with dynamic RF/TF gating")
 
     def get_stats(self):
-        """Retorna estadísticas de uso de modelos"""
         total = sum(self.decision_stats.values())
         if total == 0:
             return {"RandomForest": 0, "TensorFlow": 0, "total": 0}
@@ -85,9 +138,8 @@ class TOIDirector:
             "TensorFlow": self.decision_stats['TensorFlow'],
             "total": total,
             "rf_percentage": (self.decision_stats['RandomForest'] / total) * 100,
-            "tf_percentage": (self.decision_stats['TensorFlow'] / total) * 100
+            "tf_percentage": (self.decision_stats['TensorFlow'] / total) * 100,
         }
 
     def reset_stats(self):
-        """Reinicia las estadísticas de uso"""
         self.decision_stats = {'RandomForest': 0, 'TensorFlow': 0}

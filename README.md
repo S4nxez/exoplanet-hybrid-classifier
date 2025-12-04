@@ -16,7 +16,7 @@ _Combinando Random Forest y TensorFlow mediante Soft Voting adaptativo_
 
 El **Director General** es un sistema avanzado de Machine Learning diseñado para la clasificación automática de candidatos a exoplanetas provenientes de múltiples misiones espaciales (KOI, TOI, K2). Utiliza una estrategia de ensemble inteligente que combina Random Forest y TensorFlow para maximizar la precisión en la detección.
 
-### 🏆 Resultados Principales
+### 🝆 Resultados Principales
 
 - 🎯 **Accuracy del Director:** 85.39%
 - 🌲 **Random Forest individual:** 85.33%
@@ -40,7 +40,7 @@ Input Data → Feature Analysis → Model Selection → Prediction
               Final Prediction
 ```
 
-### 🌐 Sistemas Multi-Misión
+### 🌝 Sistemas Multi-Misión
 
 1. **🔭 KOI System (Kepler Objects of Interest)**
 
@@ -48,16 +48,16 @@ Input Data → Feature Analysis → Model Selection → Prediction
    - Features: 64 parámetros físicos y orbitales
    - Estado: ✅ Completamente entrenado
 
-2. **🛰️ TOI System (TESS Objects of Interest)**
+2. **🛰︝ TOI System (TESS Objects of Interest)**
 
    - Modelos: RF + TF wrapper
    - Estado: ✅ Modelos base entrenados
 
-3. **🌍 K2 System (Kepler Extended Mission)**
+3. **🌝 K2 System (Kepler Extended Mission)**
    - Modelo: Random Forest especializado
    - Estado: ✅ Modelo disponible
 
-## 📁 Estructura del Proyecto
+## 📝 Estructura del Proyecto
 
 ```
 modelTemplate/
@@ -103,14 +103,14 @@ cd koi_system
 python train_koi_system.py
 ```
 
-#### 🛰️ Sistema TOI
+#### 🛰︝ Sistema TOI
 
 ```bash
 cd toi_system
 python train_toi_system.py
 ```
 
-#### 🌍 Sistema K2
+#### 🌝 Sistema K2
 
 ```bash
 cd k2_system
@@ -136,7 +136,7 @@ print(f"TF usado: {stats['tf_usage']:.1%}")
 
 ## 📊 Métricas de Rendimiento
 
-### 🏆 Comparación de Modelos (Sistema KOI)
+### 🝆 Comparación de Modelos (Sistema KOI)
 
 | Modelo                  | Accuracy   | Precision | Recall    | F1-Score  |
 | ----------------------- | ---------- | --------- | --------- | --------- |
@@ -180,11 +180,17 @@ print(f"TF usado: {stats['tf_usage']:.1%}")
 - Clasificación de candidatos a exoplanetas
 - Reducción de falsos positivos
 
-### 🏭 Aplicaciones Operacionales
+### 🝭 Aplicaciones Operacionales
 
 - Pipeline automatizado para nuevas observaciones
 - Soporte a decisiones en misiones espaciales
 - Análisis en tiempo real de datos astronómicos
+
+## Mantenimiento y limpieza segura
+
+- `clean_project.py` ahora funciona como auditor: lista placeholders conocidos y solo elimina caches si se ejecuta con `python clean_project.py --delete-temp`. No borra código ni modelos por defecto.
+- Los siguientes archivos bajo `src/` siguen siendo plantillas vacías y deben documentarse o completarse antes de usarlos en producción: `mission_models.py`, `mission_models_fixed.py`, `partial_coverage.py`, `total_coverage.py`, `tensorflow_hybrid.py`, `trainers/multi_mission_trainer.py`, `trainers/partial_trainer.py`, `trainers/total_trainer.py`, `evaluators/model_evaluators.py`.
+- Si necesitas remover artefactos temporales (por ejemplo `__pycache__` o `*.pyc`), usa la bandera `--delete-temp` en el script; cualquier otra limpieza debe hacerse manualmente revisando la lista que imprime el auditor.
 
 ## 📈 Roadmap Futuro
 
@@ -207,14 +213,14 @@ Este proyecto está abierto a contribuciones. Areas de interés:
 
 - 🔬 Nuevos algoritmos de ML
 - 📊 Mejoras en visualización
-- 🛰️ Soporte para nuevas misiones
+- 🛰︝ Soporte para nuevas misiones
 - 📚 Documentación y tutoriales
 
 ## 📄 Licencia
 
 Este proyecto utiliza datos públicos de NASA/Kepler y está disponible para fines de investigación y educación.
 
-## 🏅 Reconocimientos
+## 🝅 Reconocimientos
 
 - **NASA Kepler Mission** por los datos de alta calidad
 - **TESS Mission** por los datos de TOI
@@ -227,6 +233,6 @@ Este proyecto utiliza datos públicos de NASA/Kepler y está disponible para fin
 **🌟 Director General Multi-Mission v1.0**
 _Automatizando el descubrimiento de exoplanetas con IA_
 
-[🚀 Demo](.) | [📖 Docs](.) | [🐛 Issues](.) | [💬 Discussions](.)
+[🚀 Demo](.) | [📖 Docs](.) | [🝛 Issues](.) | [💬 Discussions](.)
 
 </div>
