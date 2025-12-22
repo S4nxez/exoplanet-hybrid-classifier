@@ -22,13 +22,13 @@ logger = logging.getLogger(__name__)
 
 def load_and_prepare_data(data_path=None):
     """
-    Carga y prepara datos del dataset KOI
+    Carga y prepara datos del dataset KOI usando la etiqueta `is_planet`.
 
     Returns:
         X_train, X_test, y_train, y_test
     """
     if data_path is None:
-        data_path = KOIConfig.DATA_DIR / 'koi.csv'
+        data_path = KOIConfig.DATA_DIR / 'clean' / 'koi_clean.csv'
 
     logger.info(f"📁 Cargando datos desde: {data_path}")
 
@@ -36,18 +36,17 @@ def load_and_prepare_data(data_path=None):
     df = pd.read_csv(data_path)
     logger.info(f"   Total registros: {len(df)}")
 
-    # Filtrar solo CANDIDATE (positivos potenciales) y FALSE POSITIVE
-    df_filtered = df[df['koi_pdisposition'].isin(['CANDIDATE', 'FALSE POSITIVE'])].copy()
-    logger.info(f"   Registros filtrados: {len(df_filtered)}")
+    if 'is_planet' not in df.columns:
+        raise ValueError("La columna objetivo 'is_planet' no existe en el dataset limpio")
 
-    # Crear target binario (1 = CANDIDATE/exoplaneta, 0 = FALSE POSITIVE)
-    df_filtered['target'] = (df_filtered['koi_pdisposition'] == 'CANDIDATE').astype(int)
+    # Target binario (proporcionado en el dataset limpio)
+    df['target'] = df['is_planet'].astype(int)
 
     # Seleccionar features
     features = KOIConfig.FEATURES
 
-    # Eliminar filas con valores faltantes
-    df_clean = df_filtered[features + ['target']].dropna()
+    # Eliminar filas con valores faltantes sólo en features (evita data leak)
+    df_clean = df[features + ['target']].dropna()
     logger.info(f"   Registros limpios: {len(df_clean)}")
 
     # Separar X e y

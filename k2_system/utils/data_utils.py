@@ -81,25 +81,21 @@ class K2DataLoader:
         return df
 
     def prepare_features(self, df):
-        """Prepara características para el modelo"""
-        logger.info("Preparing feature columns")
+        """Prepara características para el modelo (solo columnas base)."""
+        logger.info("Preparing feature columns (base set)")
 
-        # Identificar características disponibles
         available_features = []
 
-        # Características base K2
+        # Características base alineadas con los modelos persistidos y el director
         for feature in FeatureConfig.BASE_FEATURES:
             if feature in df.columns:
                 available_features.append(feature)
             else:
                 logger.warning(f"Missing feature: {feature}")
 
-        # Crear características derivadas si es posible
-        derived_features = self._create_derived_features(df)
-        available_features.extend(derived_features)
-
+        # No se generan derivadas para evitar desalineación con los scalers entrenados
         self.feature_columns = available_features
-        logger.info(f"Features available: {len(self.feature_columns)}")
+        logger.info(f"Features available: {len(self.feature_columns)} -> {self.feature_columns}")
 
         return self.feature_columns
 

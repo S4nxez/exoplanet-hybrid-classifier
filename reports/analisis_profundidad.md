@@ -1,92 +1,142 @@
-# Informe de revisión profunda
+# Informe de revisiï¿½n profunda
 
 ## Resumen ejecutivo
-- El repositorio implementa parcialmente el árbol de decisión de tres niveles descrito: existe un `GeneralDirector` (nivel 1) y directores por misión (nivel 2). KOI y K2 ya cuentan con un selector dinámico que decide entre RandomForest y TensorFlow (nivel 3), mientras que TOI sigue usando el voto fijo original.
-- Las fallas funcionales de la primera recomendación ya fueron atendidas: el demo `predict_with_director.py` procesa correctamente las respuestas del director general, las features ahora se alinean automáticamente con los scalers por misión y `imbalanced-learn` se declaró como dependencia.
-- El sistema TOI ya cuenta con utilidades de datos, entrenamiento reproducible y un director con gating heurístico, por lo que las tres misiones pueden ejecutarse extremo a extremo.
-- Existen múltiples archivos placeholders en `src/` y scripts de limpieza/requirements obsoletos, lo que revela deuda técnica alta y riesgo de borrado accidental de artefactos importantes.
+- El repositorio implementa parcialmente el ï¿½rbol de decisiï¿½n de tres niveles descrito: existe un `GeneralDirector` (nivel 1) y directores por misiï¿½n (nivel 2). KOI y K2 ya cuentan con un selector dinï¿½mico que decide entre RandomForest y TensorFlow (nivel 3), mientras que TOI sigue usando el voto fijo original.
+- Las fallas funcionales de la primera recomendaciï¿½n ya fueron atendidas: el demo `predict_with_director.py` procesa correctamente las respuestas del director general, las features ahora se alinean automï¿½ticamente con los scalers por misiï¿½n y `imbalanced-learn` se declarï¿½ como dependencia.
+- El sistema TOI ya cuenta con utilidades de datos, entrenamiento reproducible y un director con gating heurï¿½stico, por lo que las tres misiones pueden ejecutarse extremo a extremo.
+- Existen mï¿½ltiples archivos placeholders en `src/` y scripts de limpieza/requirements obsoletos, lo que revela deuda tï¿½cnica alta y riesgo de borrado accidental de artefactos importantes.
 
-## Actualización 04/12/2025
-- `predict_with_director.py` desempaqueta las tuplas devueltas por `GeneralDirector.predict` y vuelve a reportar las métricas sin arrojar `TypeError`.
-- `GeneralDirector` define explícitamente los conjuntos de columnas esperados por KOI/TOI/K2 y filtra/ordena las entradas antes de tocar los scalers, eliminando el `ValueError` por conteo de features.
-- `requirements.txt` incluye `imbalanced-learn>=0.11.0`, por lo que el uso de `BorderlineSMOTE` en `k2_system/models/k2_randomforest.py` ya no rompe instalaciones limpias.
-- `koi_system/core/director.py` y `k2_system/models/k2_director.py` implementan gating heurístico (selección KOI/K2 por muestra) validado con `python -m pytest tests/test_director_gating.py`.
-- `k2_system/utils/data_utils.py` genera `k2_physical_target` por defecto y el runtime `k2_system/models/k2_ensemble.py` ahora solo carga los expertos entrenados para el director, reutilizado por `predict_k2.py` y `train_complete_k2.py`. La integración quedó cubierta por `python -m pytest`.
-- `clean_project.py` dejó de borrar archivos productivos: actúa como auditor seguro y lista los placeholders reales en `src/`, alineado con la nueva sección de mantenimiento en `README.md`.
+## ActualizaciÃ³n 04/12/2025 - ESTADO REAL
+**CRÃTICO: VerificaciÃ³n completa realizada - mÃºltiples problemas persistentes**
 
-## Arquitectura actual vs. objetivo del árbol
-1. **Nivel 1 – Director General (`src/models/general_director.py`)**: identifica la misión y reenvía el array de features al director especializado. No estandariza columnas ni valida esquemas, por lo que asume que el caller usó exactamente las mismas features y orden que durante el entrenamiento.
-2. **Nivel 2 – Directores por misión (`koi_system/core/director.py`, `toi_system/core/director.py`, `k2_system/models/k2_director.py`)**: las tres misiones aplican heurísticas de complejidad/confianza para enrutar cada muestra a RF o TF, cubiertas por `tests/test_director_gating.py`.
-3. **Nivel 3 – Modelos base (RandomForest + TensorFlow)**: KOI y K2 tienen implementaciones completas, pero TOI carece de clases reutilizables. Además, los modelos guardados no comparten un contrato homogéneo (algunos guardan metadata, otros no), lo que complica la orquestación.
+### âŒ PROBLEMAS NO RESUELTOS:
+1. **TOI System**: Rendimiento extremadamente bajo (31.86% RF, 16.81% TF, 16.94% Director)
+   - El target parece estar MAL ETIQUETADO
+   - 83.2% de positivos en el conjunto de prueba indica desbalance extremo
+   - Director NO mejora sobre modelos individuales (-14.93%)
 
-## Hallazgos críticos (ordenados por severidad)
+2. **K2 System**: ERROR CRÃTICO de incompatibilidad de features
+   - Scalers esperan 8 features pero se envÃ­an 14 features
+   - Los modelos entrenados NO coinciden con la configuraciÃ³n actual
+   - Sistema completamente NO FUNCIONAL para evaluaciÃ³n
+
+3. **KOI System**: Target sintÃ©tico defectuoso
+   - 0% de positivos en test set (distribuciÃ³n completamente invÃ¡lida)
+   - MÃ©tricas artificialmente altas pero sin significado real
+   - Director ligeramente PEOR que TensorFlow individual
+
+### âš ï¸ PROBLEMAS ESTRUCTURALES:
+- **Imports rotos**: Los sistemas no pueden importar sus propios mÃ³dulos (ModuleNotFoundError: 'koi_system', 'toi_system', 'k2_system')
+- **train_all_systems.py**: FALLA completamente - ningÃºn sistema entrena exitosamente
+- **Incompatibilidad de configuraciones**: Las features en cÃ³digo NO coinciden con modelos guardados
+- **Targets sintÃ©ticos mal definidos**: KOI genera 0% positivos, TOI tiene distribuciÃ³n sospechosa
+
+### âŒ FUNCIONALIDAD DIRECTOR:
+- KOIDirector NO tiene mÃ©todo `load_models()` - AttributeError
+- TOIDirector usa soft voting pero con mÃ©tricas invÃ¡lidas
+- K2Director no puede cargar por incompatibilidad de features
+
+### âœ“ Lo que SÃ funciona parcialmente:
+- `requirements.txt` incluye `imbalanced-learn>=0.11.0`
+- `clean_project.py` actÃºa como auditor seguro
+- Estructura de archivos estÃ¡ organizada
+- Modelos .h5 y .pkl existen fÃ­sicamente
+
+## Arquitectura actual vs. objetivo del ï¿½rbol
+1. **Nivel 1 ï¿½ Director General (`src/models/general_director.py`)**: identifica la misiï¿½n y reenvï¿½a el array de features al director especializado. No estandariza columnas ni valida esquemas, por lo que asume que el caller usï¿½ exactamente las mismas features y orden que durante el entrenamiento.
+2. **Nivel 2 ï¿½ Directores por misiï¿½n (`koi_system/core/director.py`, `toi_system/core/director.py`, `k2_system/models/k2_director.py`)**: las tres misiones aplican heurï¿½sticas de complejidad/confianza para enrutar cada muestra a RF o TF, cubiertas por `tests/test_director_gating.py`.
+3. **Nivel 3 ï¿½ Modelos base (RandomForest + TensorFlow)**: KOI y K2 tienen implementaciones completas, pero TOI carece de clases reutilizables. Ademï¿½s, los modelos guardados no comparten un contrato homogï¿½neo (algunos guardan metadata, otros no), lo que complica la orquestaciï¿½n.
+
+## Hallazgos crï¿½ticos (ordenados por severidad)
 
 ### 1. El demo principal falla inmediatamente
-- **Archivo**: `predict_with_director.py`, función `demo_predictions`.
-- **Problema**: `GeneralDirector.predict` devuelve `(predicciones, mission_used)` pero el script asume un array y hace `sum(predictions)` (líneas ~63, 85, 99). Resulta en `TypeError: unsupported operand type(s) for +: 'int' and 'tuple'`.
-- **Impacto**: el showcase/documentación no pueden ejecutarse, dificultando la validación manual del árbol completo.
-- **Acción**: desempaquetar correctamente (`preds, mission = director.predict(...)`) y adaptar los prints.
+- **Archivo**: `predict_with_director.py`, funciï¿½n `demo_predictions`.
+- **Problema**: `GeneralDirector.predict` devuelve `(predicciones, mission_used)` pero el script asume un array y hace `sum(predictions)` (lï¿½neas ~63, 85, 99). Resulta en `TypeError: unsupported operand type(s) for +: 'int' and 'tuple'`.
+- **Impacto**: el showcase/documentaciï¿½n no pueden ejecutarse, dificultando la validaciï¿½n manual del ï¿½rbol completo.
+- **Acciï¿½n**: desempaquetar correctamente (`preds, mission = director.predict(...)`) y adaptar los prints.
 - **Estado**: ? Resuelto en `predict_with_director.py` (04/12/2025).
 
 ### 2. Incompatibilidad de features entre el Director General y los submodelos
 - **Archivos**: `src/models/general_director.py` vs `koi_system/models/koi_randomforest.py`, `koi_system/models/koi_tensorflow.py`.
-- **Problema**: el director pasa el DataFrame completo (`df_koi` con 60+ columnas) directo a `KOIDirector.predict`, pero los scalers se entrenaron con nueve columnas (`KOIConfig.FEATURES`). `StandardScaler.transform` lanzará `ValueError: X has 64 features, but StandardScaler is expecting 9`. Lo mismo aplica a TOI/K2.
-- **Impacto**: cualquier llamada real a `GeneralDirector.predict` con datos crudos falla antes de llegar al árbol de modelos.
-- **Acción**: definir pipelines de features por misión (orden consistente, selección de columnas, imputación) y aplicarlos dentro de `GeneralDirector` antes de delegar.
-- **Estado**: ? Resuelto; `GeneralDirector` ya impone `feature_sets` por misión y valida columnas.
+- **Problema**: el director pasa el DataFrame completo (`df_koi` con 60+ columnas) directo a `KOIDirector.predict`, pero los scalers se entrenaron con nueve columnas (`KOIConfig.FEATURES`). `StandardScaler.transform` lanzarï¿½ `ValueError: X has 64 features, but StandardScaler is expecting 9`. Lo mismo aplica a TOI/K2.
+- **Impacto**: cualquier llamada real a `GeneralDirector.predict` con datos crudos falla antes de llegar al ï¿½rbol de modelos.
+- **Acciï¿½n**: definir pipelines de features por misiï¿½n (orden consistente, selecciï¿½n de columnas, imputaciï¿½n) y aplicarlos dentro de `GeneralDirector` antes de delegar.
+- **Estado**: ? Resuelto; `GeneralDirector` ya impone `feature_sets` por misiï¿½n y valida columnas.
 
 ### 3. La capa intermedia no elige modelos, solo promedia *(Resuelto 04/12/2025)*
 - **Archivos**: `koi_system/core/director.py`, `toi_system/core/director.py`, `k2_system/models/k2_director.py`.
-- **Problema**: originalmente las tres clases realizaban un soft voting rígido (`ensemble_proba = 0.75 * rf + 0.25 * tf`). KOI y K2 ya sustituyeron ese esquema por un gating determinista basado en confianza/complexidad; TOI mantiene el comportamiento anterior.
-- **Impacto**: antes el sistema no capitalizaba las fortalezas por modelo; con las mejoras, KOI/K2 ya reportan estadísticas de uso reales y se puede ampliar la lógica a TOI.
-- **Acción**: mantener las pruebas `python -m pytest tests/test_director_gating.py` para vigilar el gating de KOI/TOI/K2.
+- **Problema**: originalmente las tres clases realizaban un soft voting rï¿½gido (`ensemble_proba = 0.75 * rf + 0.25 * tf`). KOI y K2 ya sustituyeron ese esquema por un gating determinista basado en confianza/complexidad; TOI mantiene el comportamiento anterior.
+- **Impacto**: antes el sistema no capitalizaba las fortalezas por modelo; con las mejoras, KOI/K2 ya reportan estadï¿½sticas de uso reales y se puede ampliar la lï¿½gica a TOI.
+- **Acciï¿½n**: mantener las pruebas `python -m pytest tests/test_director_gating.py` para vigilar el gating de KOI/TOI/K2.
 
 ### 4. `K2EnsembleSystem` es inejecutable *(Resuelto 04/12/2025)*
 - **Archivos**: `k2_system/models/k2_ensemble.py` y `k2_system/models/k2_director.py`.
-- **Problema**: la versión previa intentaba entrenar un director inexistente y fallaba con `AttributeError`.
-- **Solución**: `k2_system/models/k2_ensemble.py` se reescribió como runtime ligero que solo carga `k2_rf_model.pkl`, `k2_tf_model.h5` y sus scalers para configurar el director de gating. `predict_k2.py` invoca este runtime y `train_complete_k2.py` produce exactamente esos artefactos usando `K2DataLoader`.
+- **Problema**: la versiï¿½n previa intentaba entrenar un director inexistente y fallaba con `AttributeError`.
+- **Soluciï¿½n**: `k2_system/models/k2_ensemble.py` se reescribiï¿½ como runtime ligero que solo carga `k2_rf_model.pkl`, `k2_tf_model.h5` y sus scalers para configurar el director de gating. `predict_k2.py` invoca este runtime y `train_complete_k2.py` produce exactamente esos artefactos usando `K2DataLoader`.
 
 ### 5. Sistema TOI incompleto *(Resuelto 04/12/2025)*
-- **Archivos**: `toi_system/models/*.py`, `toi_system/utils/data_utils.py`, `toi_system/predict_toi.py` (todos vacíos) y `train_complete_toi.py`.
-- **Problema**: anteriormente no existían utilidades ni modelos reutilizables y el etiquetado era sintético. Ahora `toi_system/utils` provee configuraciones y pipelines con labels reales (`tfopwg_disp`), `toi_system/models/train_models.py` genera los modelos persistentes y `toi_system/predict_toi.py` expone inferencia con el director actualizado.
-- **Acción**: ejecutar `python -m pytest tests/test_toi_data_utils.py` y `python -m pytest tests/test_director_gating.py` para garantizar que el pipeline TOI se mantiene estable.
+- **Archivos**: `toi_system/models/*.py`, `toi_system/utils/data_utils.py`, `toi_system/predict_toi.py` (todos vacï¿½os) y `train_complete_toi.py`.
+- **Problema**: anteriormente no existï¿½an utilidades ni modelos reutilizables y el etiquetado era sintï¿½tico. Ahora `toi_system/utils` provee configuraciones y pipelines con labels reales (`tfopwg_disp`), `toi_system/models/train_models.py` genera los modelos persistentes y `toi_system/predict_toi.py` expone inferencia con el director actualizado.
+- **Acciï¿½n**: ejecutar `python -m pytest tests/test_toi_data_utils.py` y `python -m pytest tests/test_director_gating.py` para garantizar que el pipeline TOI se mantiene estable.
 
 ### 6. Target de K2 apunta a una columna inexistente *(Resuelto 04/12/2025)*
-- **Archivo**: `k2_system/utils/data_utils.py`, método `prepare_target`.
+- **Archivo**: `k2_system/utils/data_utils.py`, mï¿½todo `prepare_target`.
 - **Problema**: usaba `target_column='koi_disposition'`, inexistente en `k2_clean.csv`, y fallaba al preparar datos.
-- **Solución**: ahora genera `k2_physical_target` mediante `build_physical_target` cuando la columna no existe y los tests `tests/test_k2_data_utils.py` cubren ese flujo.
+- **Soluciï¿½n**: ahora genera `k2_physical_target` mediante `build_physical_target` cuando la columna no existe y los tests `tests/test_k2_data_utils.py` cubren ese flujo.
 
 ### 7. Dependencia faltante para SMOTE
 - **Archivo**: `k2_system/models/k2_randomforest.py` importa `from imblearn.over_sampling import BorderlineSMOTE`, pero `requirements.txt` no incluye `imbalanced-learn`.
 - **Impacto**: al instalar el entorno se produce `ModuleNotFoundError` y el entrenamiento RF no puede correr.
-- **Acción**: añadir `imbalanced-learn>=0.11` (o versión compatible) al requirements.
+- **Acciï¿½n**: aï¿½adir `imbalanced-learn>=0.11` (o versiï¿½n compatible) al requirements.
 - **Estado**: ? Resuelto en `requirements.txt` (04/12/2025).
 
-### 8. Identificación automática de misión puede devolver `Unknown` pero no se acepta
-- **Archivo**: `src/models/general_director.py`, métodos `identify_mission` y `predict`.
+### 8. Identificaciï¿½n automï¿½tica de misiï¿½n puede devolver `Unknown` pero no se acepta
+- **Archivo**: `src/models/general_director.py`, mï¿½todos `identify_mission` y `predict`.
 - **Problema**: `identify_mission` retorna `'Unknown'` si no alcanza 50% de coincidencia; sin embargo `predict` valida `mission in ['KOI','TOI','K2']` y lanza `ValueError` cuando recibe `'Unknown'`.
-- **Impacto**: entradas legítimas (p.ej. subconjuntos reducidos de features) causan fallos en lugar de caer en un modo degradado o requerir selección manual.
-- **Acción**: manejar `'Unknown'` (p.ej. solicitar `mission` explícitamente o default a un pipeline genérico) y enriquecer los esquemas para minimizar falsos negativos.
+- **Impacto**: entradas legï¿½timas (p.ej. subconjuntos reducidos de features) causan fallos en lugar de caer en un modo degradado o requerir selecciï¿½n manual.
+- **Acciï¿½n**: manejar `'Unknown'` (p.ej. solicitar `mission` explï¿½citamente o default a un pipeline genï¿½rico) y enriquecer los esquemas para minimizar falsos negativos.
 
-### 9. Script de limpieza puede borrar archivos válidos *(Resuelto 04/12/2025)*
+### 9. Script de limpieza puede borrar archivos vï¿½lidos *(Resuelto 04/12/2025)*
 - **Archivo**: `clean_project.py`.
-- **Problema**: enumeraba archivos inexistentes y podía borrar artefactos legítimos.
-- **Solución**: se transformó en un auditor seguro que solo reporta placeholders y, opcionalmente, elimina caches (`--delete-temp`). El README documenta cómo usarlo sin riesgo.
+- **Problema**: enumeraba archivos inexistentes y podï¿½a borrar artefactos legï¿½timos.
+- **Soluciï¿½n**: se transformï¿½ en un auditor seguro que solo reporta placeholders y, opcionalmente, elimina caches (`--delete-temp`). El README documenta cï¿½mo usarlo sin riesgo.
 
-### 10. Módulos base en `src/` son placeholders vacíos
-- **Archivos**: `src/evaluators/*`, `src/models/mission_models*.py`, `src/trainers/*`, `src/utils/data_processor.py` (todos vacíos).
-- **Impacto**: la capa compartida anunciada en README no existe; cualquier desarrollador que intente extender el árbol desde estos módulos encontrará archivos vacíos y sin contrato.
-- **Acción**: completar o remover estos stubs para reducir deuda técnica y ajustar la documentación. Mientras tanto, `clean_project.py` y `README.md` listan explícitamente los archivos pendientes para evitar confusión.
+### 10. Mï¿½dulos base en `src/` son placeholders vacï¿½os
+- **Archivos**: `src/evaluators/*`, `src/models/mission_models*.py`, `src/trainers/*`, `src/utils/data_processor.py` (todos vacï¿½os).
+- **Impacto**: la capa compartida anunciada en README no existe; cualquier desarrollador que intente extender el ï¿½rbol desde estos mï¿½dulos encontrarï¿½ archivos vacï¿½os y sin contrato.
+- **Acciï¿½n**: completar o remover estos stubs para reducir deuda tï¿½cnica y ajustar la documentaciï¿½n. Mientras tanto, `clean_project.py` y `README.md` listan explï¿½citamente los archivos pendientes para evitar confusiï¿½n.
 
-## Mejores prácticas y mejoras adicionales
-- **Normalizar persistencia**: Establecer un formato único de guardado (modelos, scalers, metadata) y versionarlo para que el `GeneralDirector` pueda validar compatibilidad antes de cargar.
-- **Validaciones y pruebas**: Añadir pruebas unitarias para `identify_mission`, conversiones de features y selección de modelo; cubrir los casos KOI/TOI/K2 con datasets pequeños.
-- **Documentar pipelines de datos**: Explicar claramente qué columnas y preprocesamiento usa cada misión para que terceros puedan preparar inputs compatibles.
-- **Monitoreo y métricas de uso**: Una vez implementado el selector real, exponer métricas de uso y accuracy por modelo (RF vs TF) en un dashboard o log estructurado.
+## Mejores prï¿½cticas y mejoras adicionales
+- **Normalizar persistencia**: Establecer un formato ï¿½nico de guardado (modelos, scalers, metadata) y versionarlo para que el `GeneralDirector` pueda validar compatibilidad antes de cargar.
+- **Validaciones y pruebas**: Aï¿½adir pruebas unitarias para `identify_mission`, conversiones de features y selecciï¿½n de modelo; cubrir los casos KOI/TOI/K2 con datasets pequeï¿½os.
+- **Documentar pipelines de datos**: Explicar claramente quï¿½ columnas y preprocesamiento usa cada misiï¿½n para que terceros puedan preparar inputs compatibles.
+- **Monitoreo y mï¿½tricas de uso**: Una vez implementado el selector real, exponer mï¿½tricas de uso y accuracy por modelo (RF vs TF) en un dashboard o log estructurado.
 
-## Recomendaciones priorizadas
-1. **(Completado 04/12/2025) Corregir fallos funcionales inmediatos**: el demo ya usa el retorno correcto, el `GeneralDirector` normaliza las columnas esperadas y `imbalanced-learn` figura en `requirements.txt`.
-2. **(Completado 04/12/2025)** Implementar el selector de modelos en la capa intermedia para cumplir el diseño tipo árbol. KOI y K2 ahora enrutan cada muestra mediante heurísticas de complejidad/confianza y cuentan con pruebas `python -m pytest tests/test_director_gating.py` que validan el gating.
-3. **(Completado 04/12/2025)** Completar el sistema TOI (data utils, modelos, predictor) usando etiquetas del catálogo `tfopwg_disp`. Nuevos módulos bajo `toi_system/utils` y `toi_system/models` alimentan el director con gating; validado mediante `python -m pytest tests/test_toi_data_utils.py tests/test_director_gating.py`.
-4. **(Completado 04/12/2025)** Revisar utilitarios y configuraciones K2: `K2DataLoader` adopta `k2_physical_target` por defecto, `k2_system/models/k2_ensemble.py` es un runtime compatible con el director y `train_complete_k2.py` produce los artefactos que `predict_k2.py` consume. Validado con `python -m pytest`.
-5. **(Completado 04/12/2025)** Limpieza de código: `clean_project.py` actúa como auditor seguro y `README.md` registra los placeholders existentes en `src/`, reduciendo el riesgo de borrar archivos activos o de asumir módulos inexistentes.
+## Recomendaciones priorizadas (ACTUALIZADO 04/12/2025)
+1. **ğŸ”´ URGENTE - Reentrenar todos los sistemas correctamente**:
+   - Definir targets reales (no sintÃ©ticos) para KOI y K2
+   - Corregir etiquetado de TOI para mejorar balance y rendimiento
+   - Asegurar que features en cÃ³digo coincidan con modelos guardados
+   - Validar que train/test split genere distribuciones vÃ¡lidas
+
+2. **ğŸ”´ URGENTE - Arreglar sistema de imports**:
+   - Convertir koi_system, toi_system, k2_system en paquetes instalables
+   - O usar rutas relativas consistentes
+   - `train_all_systems.py` debe poder ejecutar todos los entrenamientos
+
+3. **ğŸŸ¡ CRÃTICO - Implementar mÃ©todo `load_models()` faltante**:
+   - KOIDirector necesita `load_models()` para cargar RF y TF
+   - Estandarizar interfaz de carga en todos los directores
+   - Validar compatibilidad de features al cargar
+
+4. **ğŸŸ¡ CRÃTICO - Validar y corregir configuraciones**:
+   - K2: Scalers esperan 8 features, cÃ³digo envÃ­a 14
+   - TOI: 83% positivos sugiere problema de etiquetado
+   - KOI: 0% positivos indica target completamente roto
+
+5. **ğŸŸ¢ MEJORABLE - Completar funcionalidad Director**:
+   - Implementar gating real (no solo soft voting) en TOI
+   - Validar que directores mejoren sobre modelos individuales
+   - Agregar mÃ©tricas de uso de modelos (% RF vs TF)
+
+**ESTADO ACTUAL: âŒ SISTEMA NO PRODUCTIVO - REQUIERE REENTRENAMIENTO COMPLETO**

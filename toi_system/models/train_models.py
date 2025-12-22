@@ -9,14 +9,23 @@ import tensorflow as tf
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils.class_weight import compute_class_weight
 
 from ..utils.config import TOIPaths, TrainingConfig
 from ..utils.data_utils import prepare_dataset, split_dataset
 
 
+def _balanced_class_weights(y: np.ndarray) -> dict[int, float]:
+	classes = np.unique(y)
+	weights = compute_class_weight(class_weight="balanced", classes=classes, y=y)
+	return {int(cls): float(w) for cls, w in zip(classes, weights)}
+
+
 def train_random_forest(X_train: np.ndarray, y_train: np.ndarray, cfg: TrainingConfig) -> tuple[RandomForestClassifier, StandardScaler]:
 	scaler = StandardScaler()
 	X_scaled = scaler.fit_transform(X_train)
+
+	class_weights = _balanced_class_weights(y_train)
 
 	model = RandomForestClassifier(
 		n_estimators=cfg.rf_estimators,
@@ -25,6 +34,7 @@ def train_random_forest(X_train: np.ndarray, y_train: np.ndarray, cfg: TrainingC
 		min_samples_leaf=cfg.rf_min_samples_leaf,
 		random_state=cfg.random_state,
 		n_jobs=-1,
+		class_weight=class_weights,
 	)
 	model.fit(X_scaled, y_train)
 	return model, scaler
@@ -57,6 +67,8 @@ def train_tensorflow(
 	scaler = StandardScaler()
 	X_scaled = scaler.fit_transform(X_train)
 
+	class_weights = _balanced_class_weights(y_train)
+
 	model = build_tf_model(X_scaled.shape[1])
 	callbacks = [
 		tf.keras.callbacks.EarlyStopping(
@@ -74,6 +86,7 @@ def train_tensorflow(
 		validation_split=cfg.validation_split,
 		callbacks=callbacks,
 		verbose=0,
+		class_weight=class_weights,
 	)
 	return model, scaler
 

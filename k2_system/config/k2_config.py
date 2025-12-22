@@ -119,21 +119,20 @@ class DirectorConfig:
 class FeatureConfig:
     """Configuración de características K2"""
 
-    # Características básicas K2
+    # Características básicas K2 (alineadas con el Director y los scalers guardados)
     BASE_FEATURES = [
-        'pl_orbper', 'pl_rade', 'pl_eqt', 'pl_trandep',
-        'pl_trandur', 'pl_imppar', 'st_teff', 'st_rad',
-        'st_mass', 'st_logg', 'sy_dist', 'sy_gaiamag',
-        'sy_kepmag', 'sy_tmag'
+        'pl_orbper',
+        'pl_rade',
+        'st_teff',
+        'st_rad',
+        'st_mass',
+        'sy_dist',
+        'pl_eqt',
+        'pl_orbsmax',
     ]
 
-    # Características derivadas para mayor discriminación
-    DERIVED_FEATURES = [
-        'transit_depth_ratio', 'orbital_period_log', 'stellar_brightness',
-        'planet_star_radius_ratio', 'transit_probability', 'stellar_density',
-        'insolation_flux', 'signal_strength', 'detection_confidence',
-        'observational_quality'
-    ]
+    # Características derivadas deshabilitadas para evitar desalineación con los modelos persistidos
+    DERIVED_FEATURES = []
 
     # Rangos para validación de datos
     FEATURE_RANGES = {

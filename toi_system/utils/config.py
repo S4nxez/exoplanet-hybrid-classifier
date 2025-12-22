@@ -55,6 +55,6 @@ class TrainingConfig:
 
 @dataclass(frozen=True)
 class TOIGatingThresholds:
-	confidence_gap: float = 0.12
-	minimum_confidence: float = 0.04
+	confidence_gap: float = 0.08
+	minimum_confidence: float = 0.12
 	complexity_threshold: float = 0.48
